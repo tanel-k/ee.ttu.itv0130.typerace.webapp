@@ -63,6 +63,8 @@ export class GameContainer {
 
   initDOMHooks() {
     this.getVictoryBanner = () => (this.element.querySelector('#victory-banner'));
+    this.getScoreWrapper = () => (this.element.querySelector('#score-wrapper'));
+    this.getVictoryTextContainer = () => (this.element.querySelector('#victory-text-container'));
   }
 
   attachDOMListeners() {
@@ -167,6 +169,9 @@ export class GameContainer {
 
     const victoryBanner = this.getVictoryBanner();
     victoryBanner.classList.remove('fadeOut');
+
+    setTimeout(() => this.transferPoints(data.playerScore, true), 500);
+
     setTimeout(() => {
       victoryBanner.classList.add('fadeOut');
       setTimeout(() => {
@@ -180,9 +185,12 @@ export class GameContainer {
     playAudio(this.audioBank.lossDing);
     this.showWinStatus = true;
     this.didWin = false;
-    const victoryBanner = this.getVictoryBanner();
 
+    const victoryBanner = this.getVictoryBanner();
     victoryBanner.classList.remove('fadeOut');
+
+    setTimeout(() => this.transferPoints(data.playerScore, false), 500);
+
     setTimeout(() => {
       victoryBanner.classList.add('fadeOut');
       setTimeout(() => {
@@ -190,6 +198,73 @@ export class GameContainer {
         this.didWin = null;
       }, 500);
     }, 1000);
+  }
+
+  transferPoints(points, victory) {
+    const scoreWrapper = this.getScoreWrapper();
+    const victoryTextContainer = this.getVictoryTextContainer();
+
+    const $scoreWrapper = $(scoreWrapper);
+    const $victoryTextContainer = $(victoryTextContainer);
+
+    const startTop = $victoryTextContainer.offset().top + 25;
+    const startLeft = $victoryTextContainer.offset().left + 85;
+    const starIcon = document.createElement('i');
+    starIcon.classList.add('fa');
+    starIcon.classList.add('fa-star');
+    const css =  {
+      'font-size': '24px'
+    };
+    starIcon.style = css;
+
+    const moveStar = (color, amount) => {
+      const $starIcon = $(starIcon.cloneNode());
+      $starIcon
+        .offset({
+          top: startTop,
+          left: startLeft
+        })
+        .css(Object.assign({
+          opacity: '0.5',
+          color,
+          position: 'absolute',
+          'z-index': '100'
+        }, css))
+        .appendTo($('body'))
+        .animate({
+          'top': $scoreWrapper.offset().top,
+          'left': $scoreWrapper.offset().left
+        }, 750, 'easeInOutExpo', () => {
+          if (victory) {
+            playAudio(this.audioBank.winnerPointDing);
+          } else {
+            playAudio(this.audioBank.loserPointDing);
+          }
+
+          $scoreWrapper.effect('shake', { times: 1 }, 200);
+          $starIcon.remove();
+          this.currentScore += amount;
+        });
+    };
+
+    let i = 1;
+    let color;
+    let transfers;
+    let amount;
+    if (victory) {
+      color = 'gold';
+      amount = 10;
+      transfers = points / 10;
+    } else {
+      // bronze
+      color = '#CD7F32';
+      amount = 1;
+      transfers = points;
+    }
+
+    while (transfers-- > 0) {
+      setTimeout(() => moveStar(color, amount), 150 * i++);
+    }
   }
   /* /SERVER MESSAGE HANDLERS */
 
@@ -265,7 +340,16 @@ export class GameContainer {
     return this.isInGame;
   }
 
+  get showCurrentScore() {
+    return this.isInGame;
+  }
   /* /VISIBLITY LOGIC */
+
+  /* DISPLAY FORMAT LOGIC */
+  get currentScoreString() {
+    return ('000' + this.currentScore).slice(-4);
+  }
+  /* /DISPLAY FORMAT LOGIC */
 
   /* GATEWAY LOGIC */
   get canSubmitWord() {

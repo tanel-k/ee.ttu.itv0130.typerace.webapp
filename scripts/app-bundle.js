@@ -122,7 +122,7 @@ define('resources/index',['exports'], function (exports) {
     config.globalResources(['./attributes/key-return', './attributes/take-focus', './attributes/no-select', './elements/ui-wrappers/bs-row']);
   }
 });
-define('containers/game-container/game-container',['exports', 'aurelia-framework', '../../gateways/data/data-api', '../../gateways/connection/connection-api', '../../lib/string-utils', '../../lib/message-types'], function (exports, _aureliaFramework, _dataApi, _connectionApi, _stringUtils, _messageTypes) {
+define('containers/game-container/game-container',['exports', 'aurelia-framework', '../../gateways/data/data-api', '../../gateways/connection/connection-api', '../../lib/string-utils', '../../lib/message-types', 'jquery', 'jquery-ui-dist'], function (exports, _aureliaFramework, _dataApi, _connectionApi, _stringUtils, _messageTypes) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -291,6 +291,12 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.getVictoryBanner = function () {
         return _this.element.querySelector('#victory-banner');
       };
+      this.getScoreWrapper = function () {
+        return _this.element.querySelector('#score-wrapper');
+      };
+      this.getVictoryTextContainer = function () {
+        return _this.element.querySelector('#victory-text-container');
+      };
     };
 
     GameContainer.prototype.attachDOMListeners = function attachDOMListeners() {};
@@ -391,6 +397,11 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
 
       var victoryBanner = this.getVictoryBanner();
       victoryBanner.classList.remove('fadeOut');
+
+      setTimeout(function () {
+        return _this3.transferPoints(data.playerScore, true);
+      }, 500);
+
       setTimeout(function () {
         victoryBanner.classList.add('fadeOut');
         setTimeout(function () {
@@ -406,9 +417,14 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       playAudio(this.audioBank.lossDing);
       this.showWinStatus = true;
       this.didWin = false;
-      var victoryBanner = this.getVictoryBanner();
 
+      var victoryBanner = this.getVictoryBanner();
       victoryBanner.classList.remove('fadeOut');
+
+      setTimeout(function () {
+        return _this4.transferPoints(data.playerScore, false);
+      }, 500);
+
       setTimeout(function () {
         victoryBanner.classList.add('fadeOut');
         setTimeout(function () {
@@ -416,6 +432,72 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
           _this4.didWin = null;
         }, 500);
       }, 1000);
+    };
+
+    GameContainer.prototype.transferPoints = function transferPoints(points, victory) {
+      var _this5 = this;
+
+      var scoreWrapper = this.getScoreWrapper();
+      var victoryTextContainer = this.getVictoryTextContainer();
+
+      var $scoreWrapper = $(scoreWrapper);
+      var $victoryTextContainer = $(victoryTextContainer);
+
+      var startTop = $victoryTextContainer.offset().top + 25;
+      var startLeft = $victoryTextContainer.offset().left + 85;
+      var starIcon = document.createElement('i');
+      starIcon.classList.add('fa');
+      starIcon.classList.add('fa-star');
+      var css = {
+        'font-size': '24px'
+      };
+      starIcon.style = css;
+
+      var moveStar = function moveStar(color, amount) {
+        var $starIcon = $(starIcon.cloneNode());
+        $starIcon.offset({
+          top: startTop,
+          left: startLeft
+        }).css(Object.assign({
+          opacity: '0.5',
+          color: color,
+          position: 'absolute',
+          'z-index': '100'
+        }, css)).appendTo($('body')).animate({
+          'top': $scoreWrapper.offset().top,
+          'left': $scoreWrapper.offset().left
+        }, 750, 'easeInOutExpo', function () {
+          if (victory) {
+            playAudio(_this5.audioBank.winnerPointDing);
+          } else {
+            playAudio(_this5.audioBank.loserPointDing);
+          }
+
+          $scoreWrapper.effect('shake', { times: 1 }, 200);
+          $starIcon.remove();
+          _this5.currentScore += amount;
+        });
+      };
+
+      var i = 1;
+      var color = void 0;
+      var transfers = void 0;
+      var amount = void 0;
+      if (victory) {
+        color = 'gold';
+        amount = 10;
+        transfers = points / 10;
+      } else {
+        color = '#CD7F32';
+        amount = 1;
+        transfers = points;
+      }
+
+      while (transfers-- > 0) {
+        setTimeout(function () {
+          return moveStar(color, amount);
+        }, 150 * i++);
+      }
     };
 
     GameContainer.prototype.handleTerminateGame = function handleTerminateGame(data) {};
@@ -492,6 +574,16 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       key: 'showGameArea',
       get: function get() {
         return this.isInGame;
+      }
+    }, {
+      key: 'showCurrentScore',
+      get: function get() {
+        return this.isInGame;
+      }
+    }, {
+      key: 'currentScoreString',
+      get: function get() {
+        return ('000' + this.currentScore).slice(-4);
       }
     }, {
       key: 'canSubmitWord',
@@ -656,6 +748,45 @@ define('resources/attributes/key-return',['exports', 'aurelia-framework'], funct
     return KeyReturn;
   }()) || _class) || _class);
 });
+define('resources/attributes/no-select',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.NoSelect = undefined;
+
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  var _dec, _dec2, _class;
+
+  var NoSelect = exports.NoSelect = (_dec = (0, _aureliaFramework.customAttribute)('no-select'), _dec2 = (0, _aureliaFramework.inject)(Element), _dec(_class = _dec2(_class = function () {
+    function NoSelect(element) {
+      _classCallCheck(this, NoSelect);
+
+      this.element = element;
+    }
+
+    NoSelect.prototype.attached = function attached() {
+      var element = this.element;
+      if (!element.style) {
+        element.style = {};
+      }
+
+      element.style['user-select'] = 'none';
+      element.style['-webkit-user-select'] = 'none';
+      element.style['-moz-user-select'] = 'none';
+      element.style['-ms-user-select'] = 'none';
+      element.style.cursor = 'default';
+    };
+
+    return NoSelect;
+  }()) || _class) || _class);
+});
 define('resources/attributes/take-focus',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
   'use strict';
 
@@ -785,50 +916,9 @@ define('resources/elements/ui-wrappers/bs-row',['exports', 'aurelia-framework'],
     }
   })), _class2)) || _class;
 });
-define('resources/attributes/no-select',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
-  'use strict';
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  exports.NoSelect = undefined;
-
-  function _classCallCheck(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  var _dec, _dec2, _class;
-
-  var NoSelect = exports.NoSelect = (_dec = (0, _aureliaFramework.customAttribute)('no-select'), _dec2 = (0, _aureliaFramework.inject)(Element), _dec(_class = _dec2(_class = function () {
-    function NoSelect(element) {
-      _classCallCheck(this, NoSelect);
-
-      this.element = element;
-    }
-
-    NoSelect.prototype.attached = function attached() {
-      var element = this.element;
-      if (!element.style) {
-        element.style = {};
-      }
-
-      element.style['user-select'] = 'none';
-      element.style['-webkit-user-select'] = 'none';
-      element.style['-moz-user-select'] = 'none';
-      element.style['-ms-user-select'] = 'none';
-      element.style.cursor = 'default';
-    };
-
-    return NoSelect;
-  }()) || _class) || _class);
-});
-define('text!app.html', ['module'], function(module) { module.exports = "<template><router-view></router-view></template>"; });
-define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><div class=\"container\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row if.bind=\"showLoadingBanner\"><h3 no-select><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row><h4 no-select class=\"text-right\">Score: <span id=\"score-container\"><i class=\"fa fa-star\"></i> ${currentScore}</span></h4></bs-row><bs-row if.bind=\"showGameArea ||true\"><div class=\"animated fadeIn pulse\" if.bind=\"true\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}aaaaa</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"word\"></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong>${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template>"; });
-define('text!resources/elements/ui-wrappers/bs-row.html', ['module'], function(module) { module.exports = "<template><div class=\"row\"><div class=\"col-xs-${xs} col-sm-${sm} col-md-${md} col-lg-${lg}\"><slot></slot></div></div></template>"; });
-define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: yellowgreen;\r\n}\r\n\r\n.loss-text {\r\n  color: palevioletred;\r\n}\r\n\r\n#score-container {\r\n  color: gold;\r\n}\r\n"; });
+define('text!app.html', ['module'], function(module) { module.exports = "<template><require from=\"jquery-ui-dist/jquery-ui.css\"></require><router-view></router-view></template>"; });
 define('text!styles/utility-styles.css', ['module'], function(module) { module.exports = ""; });
-define('text!resources/attributes/no-select.html', ['module'], function(module) { module.exports = "<template><require from=\"./no-select.css\"></require></template>"; });
-define('text!resources/attributes/no-select.css', ['module'], function(module) { module.exports = ""; });
+define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><div class=\"container\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row if.bind=\"showLoadingBanner\"><h3 no-select><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row><h4 no-select id=\"score-container\" class=\"text-right ${!showCurrentScore ? 'hidden' : ''}\"><span id=\"score-wrapper\"><i class=\"fa fa-star\"></i> ${currentScoreString}</span></h4></bs-row><bs-row if.bind=\"showGameArea\"><div class=\"animated fadeIn pulse\" if.bind=\"true\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"word\"></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong id=\"victory-text-container\">${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template>"; });
+define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: gold;\r\n}\r\n\r\n.loss-text {\r\n  color: #CD7F32;\r\n}\r\n\r\n#score-container {\r\n  height: 40px;\r\n}\r\n\r\n#score-wrapper {\r\n  color: gold;\r\n}\r\n"; });
+define('text!resources/elements/ui-wrappers/bs-row.html', ['module'], function(module) { module.exports = "<template><div class=\"row\"><div class=\"col-xs-${xs} col-sm-${sm} col-md-${md} col-lg-${lg}\"><slot></slot></div></div></template>"; });
 //# sourceMappingURL=app-bundle.js.map

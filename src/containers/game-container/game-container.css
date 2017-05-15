@@ -1,11 +1,15 @@
 .victory-text {
-  color: yellowgreen;
+  color: gold;
 }
 
 .loss-text {
-  color: palevioletred;
+  color: #CD7F32;
 }
 
 #score-container {
+  height: 40px;
+}
+
+#score-wrapper {
   color: gold;
 }
