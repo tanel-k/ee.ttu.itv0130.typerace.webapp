@@ -81,6 +81,36 @@ define('main',['exports', './environment'], function (exports, _environment) {
     });
   }
 });
+define('lib/message-types',['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  var CONNECT_RESPONSE = exports.CONNECT_RESPONSE = 'CONNECT_RESPONSE';
+  var SET_NICKNAME_RESPONSE = exports.SET_NICKNAME_RESPONSE = 'SET_NICKNAME_RESPONSE';
+  var BROADCAST_WORD = exports.BROADCAST_WORD = 'BROADCAST_WORD';
+  var TYPE_WORD_RESPONSE = exports.TYPE_WORD_RESPONSE = 'TYPE_WORD_RESPONSE';
+  var TERMINATE_GAME = exports.TERMINATE_GAME = 'TERMINATE_GAME';
+  var WORD_MISMATCH = exports.WORD_MISMATCH = 'WORD_MISMATCH';
+  var ROUND_WON = exports.ROUND_WON = 'ROUND_WON';
+  var ROUND_LOST = exports.ROUND_LOST = 'ROUND_LOST';
+
+  var SET_NICKNAME = exports.SET_NICKNAME = 'SET_NICKNAME';
+  var JOIN_GAME = exports.JOIN_GAME = 'JOIN_GAME';
+  var TYPE_WORD = exports.TYPE_WORD = 'TYPE_WORD';
+});
+define('lib/string-utils',["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.isEmpty = isEmpty;
+  function isEmpty(val) {
+    return !val || !val.trim();
+  }
+});
 define('resources/index',['exports'], function (exports) {
   'use strict';
 
@@ -89,7 +119,7 @@ define('resources/index',['exports'], function (exports) {
   });
   exports.configure = configure;
   function configure(config) {
-    config.globalResources(['./attributes/key-return', './attributes/take-focus']);
+    config.globalResources(['./attributes/key-return', './attributes/take-focus', './elements/ui-wrappers/bs-row']);
   }
 });
 define('containers/game-container/game-container',['exports', 'aurelia-framework', '../../gateways/data/data-api', '../../gateways/connection/connection-api', '../../lib/string-utils', '../../lib/message-types'], function (exports, _aureliaFramework, _dataApi, _connectionApi, _stringUtils, _messageTypes) {
@@ -200,13 +230,15 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     throw new Error('Decorating class property failed. Please ensure that transform-class-properties is enabled.');
   }
 
-  var _dec, _class, _desc, _value, _class2, _descriptor;
+  var _dec, _class, _desc, _value, _class2, _descriptor, _descriptor2;
 
   var GameContainer = exports.GameContainer = (_dec = (0, _aureliaFramework.inject)(Element, _dataApi.DataAPI, _connectionApi.ConnectionAPI), _dec(_class = (_class2 = function () {
     function GameContainer(element, dataAPI, connectionAPI) {
       _classCallCheck(this, GameContainer);
 
       _initDefineProp(this, 'currentNickname', _descriptor, this);
+
+      _initDefineProp(this, 'word', _descriptor2, this);
 
       this.element = element;
       this.dataAPI = dataAPI;
@@ -291,15 +323,42 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.handleBroadcastWord = function handleBroadcastWord(data) {
-      this.isWaitingForOpponent = false;
       playAudio(this.audioBank.opponentFound);
 
+      this.isWaitingForOpponent = false;
       this.currentWord = data.word;
       this.currentOpponent = data.opponentNickname;
       this.isInGame = true;
+      this.hasNotSentWord = true;
     };
 
-    GameContainer.prototype.handleTypeWordResponse = function handleTypeWordResponse(data) {};
+    GameContainer.prototype.handleTypeWordResponse = function handleTypeWordResponse(data) {
+      switch (data.gameMessageType) {
+        case MessageTypes.WORD_MISMATCH:
+          this.handleWordMismatch();
+          break;
+        case MessageTypes.ROUND_WON:
+          this.handleRoundWon(data);
+          break;
+        case MessageTypes.ROUND_LOST:
+          this.handleRoundLost(data);
+          break;
+        default:
+          break;
+      }
+    };
+
+    GameContainer.prototype.handleWordMismatch = function handleWordMismatch() {
+      playAudio(this.audioBank.wordMismatch);
+    };
+
+    GameContainer.prototype.handleRoundWon = function handleRoundWon(data) {
+      playAudio(this.audioBank.victoryDing);
+    };
+
+    GameContainer.prototype.handleRoundLost = function handleRoundLost(data) {
+      playAudio(this.audioBank.lossDing);
+    };
 
     GameContainer.prototype.handleTerminateGame = function handleTerminateGame(data) {};
 
@@ -311,6 +370,12 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     GameContainer.prototype.handleJoinGameClick = function handleJoinGameClick() {
       playAudio(this.audioBank.joinGame);
       this.joinGame();
+    };
+
+    GameContainer.prototype.handleWordSubmit = function handleWordSubmit() {
+      if (this.canSubmitWord) {
+        this.sendWord();
+      }
     };
 
     GameContainer.prototype.setNickname = function setNickname() {
@@ -327,6 +392,11 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.canDisplayTutorial = false;
       this.canJoinGame = false;
       var message = constructMessage(MessageTypes.JOIN_GAME);
+      this.sendToServer(message);
+    };
+
+    GameContainer.prototype.sendWord = function sendWord() {
+      var message = constructMessage(MessageTypes.TYPE_WORD, { word: this.word });
       this.sendToServer(message);
     };
 
@@ -377,10 +447,25 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       get: function get() {
         return this.canJoinGame;
       }
+    }, {
+      key: 'showGameArea',
+      get: function get() {
+        return this.isInGame;
+      }
+    }, {
+      key: 'canSubmitWord',
+      get: function get() {
+        return !(0, _stringUtils.isEmpty)(this.word);
+      }
     }]);
 
     return GameContainer;
   }(), (_descriptor = _applyDecoratedDescriptor(_class2.prototype, 'currentNickname', [_aureliaFramework.bindable], {
+    enumerable: true,
+    initializer: function initializer() {
+      return '';
+    }
+  }), _descriptor2 = _applyDecoratedDescriptor(_class2.prototype, 'word', [_aureliaFramework.bindable], {
     enumerable: true,
     initializer: function initializer() {
       return '';
@@ -480,30 +565,6 @@ define('gateways/data/data-api',['exports', 'aurelia-framework', 'aurelia-http-c
     return DataAPI;
   }()) || _class);
 });
-define('lib/game-logic',['exports'], function (exports) {
-  'use strict';
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  var MSG_TYPE_CONNECT_RESPONSE = exports.MSG_TYPE_CONNECT_RESPONSE = 'CONNECT_RESPONSE';
-});
-define('lib/message-types',['exports'], function (exports) {
-  'use strict';
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  var CONNECT_RESPONSE = exports.CONNECT_RESPONSE = 'CONNECT_RESPONSE';
-  var SET_NICKNAME_RESPONSE = exports.SET_NICKNAME_RESPONSE = 'SET_NICKNAME_RESPONSE';
-  var BROADCAST_WORD = exports.BROADCAST_WORD = 'BROADCAST_WORD';
-  var TYPE_WORD_RESPONSE = exports.TYPE_WORD_RESPONSE = 'TYPE_WORD_RESPONSE';
-  var TERMINATE_GAME = exports.TERMINATE_GAME = 'TERMINATE_GAME';
-
-  var SET_NICKNAME = exports.SET_NICKNAME = 'SET_NICKNAME';
-  var JOIN_GAME = exports.JOIN_GAME = 'JOIN_GAME';
-  var TYPE_WORD = exports.TYPE_WORD = 'TYPE_WORD';
-});
 define('resources/attributes/key-return',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
   'use strict';
 
@@ -549,28 +610,6 @@ define('resources/attributes/key-return',['exports', 'aurelia-framework'], funct
     return KeyReturn;
   }()) || _class) || _class);
 });
-define('lib/utils',["exports"], function (exports) {
-  "use strict";
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  exports.isEmpty = isEmpty;
-  function isEmpty(val) {
-    return !val || !val.trim();
-  }
-});
-define('lib/string-utils',["exports"], function (exports) {
-  "use strict";
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  exports.isEmpty = isEmpty;
-  function isEmpty(val) {
-    return !val || !val.trim();
-  }
-});
 define('resources/attributes/take-focus',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
   'use strict';
 
@@ -601,6 +640,108 @@ define('resources/attributes/take-focus',['exports', 'aurelia-framework'], funct
     return KeyReturn;
   }()) || _class) || _class);
 });
+define('resources/elements/ui-wrappers/bs-row',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.BsRow = undefined;
+
+  function _initDefineProp(target, property, descriptor, context) {
+    if (!descriptor) return;
+    Object.defineProperty(target, property, {
+      enumerable: descriptor.enumerable,
+      configurable: descriptor.configurable,
+      writable: descriptor.writable,
+      value: descriptor.initializer ? descriptor.initializer.call(context) : void 0
+    });
+  }
+
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _applyDecoratedDescriptor(target, property, decorators, descriptor, context) {
+    var desc = {};
+    Object['ke' + 'ys'](descriptor).forEach(function (key) {
+      desc[key] = descriptor[key];
+    });
+    desc.enumerable = !!desc.enumerable;
+    desc.configurable = !!desc.configurable;
+
+    if ('value' in desc || desc.initializer) {
+      desc.writable = true;
+    }
+
+    desc = decorators.slice().reverse().reduce(function (desc, decorator) {
+      return decorator(target, property, desc) || desc;
+    }, desc);
+
+    if (context && desc.initializer !== void 0) {
+      desc.value = desc.initializer ? desc.initializer.call(context) : void 0;
+      desc.initializer = undefined;
+    }
+
+    if (desc.initializer === void 0) {
+      Object['define' + 'Property'](target, property, desc);
+      desc = null;
+    }
+
+    return desc;
+  }
+
+  function _initializerWarningHelper(descriptor, context) {
+    throw new Error('Decorating class property failed. Please ensure that transform-class-properties is enabled.');
+  }
+
+  var _class, _desc, _value, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4;
+
+  var DEFAULT_SIZE = 12;
+
+  var BsRow = exports.BsRow = (0, _aureliaFramework.containerless)(_class = (_class2 = function () {
+    function BsRow() {
+      _classCallCheck(this, BsRow);
+
+      _initDefineProp(this, 'lg', _descriptor, this);
+
+      _initDefineProp(this, 'md', _descriptor2, this);
+
+      _initDefineProp(this, 'sm', _descriptor3, this);
+
+      _initDefineProp(this, 'xs', _descriptor4, this);
+    }
+
+    BsRow.prototype.attached = function attached() {};
+
+    return BsRow;
+  }(), (_descriptor = _applyDecoratedDescriptor(_class2.prototype, 'lg', [_aureliaFramework.bindable], {
+    enumerable: true,
+    initializer: function initializer() {
+      return DEFAULT_SIZE;
+    }
+  }), _descriptor2 = _applyDecoratedDescriptor(_class2.prototype, 'md', [_aureliaFramework.bindable], {
+    enumerable: true,
+    initializer: function initializer() {
+      return DEFAULT_SIZE;
+    }
+  }), _descriptor3 = _applyDecoratedDescriptor(_class2.prototype, 'sm', [_aureliaFramework.bindable], {
+    enumerable: true,
+    initializer: function initializer() {
+      return DEFAULT_SIZE;
+    }
+  }), _descriptor4 = _applyDecoratedDescriptor(_class2.prototype, 'xs', [_aureliaFramework.bindable], {
+    enumerable: true,
+    initializer: function initializer() {
+      return DEFAULT_SIZE;
+    }
+  })), _class2)) || _class;
+});
 define('text!app.html', ['module'], function(module) { module.exports = "<template><router-view></router-view></template>"; });
-define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><div class=\"container\"><div class=\"page-header\"><div class=\"row\"><div class=\"col-lg-8 col-md-7 col-sm-6\"><h1>Typerace</h1></div></div></div><div class=\"row\" if.bind=\"showLoadingBanner\"><div class=\"col-md-12\"><h3><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></div></div><div class=\"row\" if.bind=\"showNicknameForm\"><div class=\"col-md-12\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></div></div><div class=\"row\" if.bind=\"showTutorial\"><div class=\"col-md-12\"><p>TODO!</p></div></div><div class=\"row\" if.bind=\"showJoinGameForm\"><div class=\"col-md-12\"><button class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></div></div></div></template>"; });
+define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><div class=\"container no-user-select cursor-default\"><div class=\"page-header\"><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row if.bind=\"showLoadingBanner\"><h3 class=\"no-user-select cursor-default\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row></bs-row><bs-row if.bind=\"showGameArea ||true\"><div class=\"animated fadeIn pulse\" if.bind=\"true\"><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center no-user-select cursor-default\"><em>${currentWord}aaaaa</em></h2><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" value.bind=\"word\"></div></bs-row></div></template>"; });
+define('text!resources/elements/ui-wrappers/bs-row.html', ['module'], function(module) { module.exports = "<template><div class=\"row\"><div class=\"col-xs-${xs} col-sm-${sm} col-md-${md} col-lg-${lg}\"><slot></slot></div></div></template>"; });
+define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ""; });
+define('text!styles/utility-styles.css', ['module'], function(module) { module.exports = ".no-user-select {\r\n  user-select: none;\r\n  -webkit-user-select: none;\r\n  -moz-user-select: none;\r\n  -ms-user-select: none;\r\n}\r\n\r\n.cursor-default {\r\n  cursor: default !important;\r\n}\r\n"; });
 //# sourceMappingURL=app-bundle.js.map

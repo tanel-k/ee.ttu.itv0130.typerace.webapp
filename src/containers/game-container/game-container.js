@@ -9,6 +9,7 @@ import * as MessageTypes from '../../lib/message-types';
 @inject(Element, DataAPI, ConnectionAPI)
 export class GameContainer {
   @bindable currentNickname = '';
+  @bindable word = '';
 
   constructor(element, dataAPI, connectionAPI) {
     this.element = element;
@@ -80,6 +81,7 @@ export class GameContainer {
     };
   }
 
+  /* SERVER MESSAGE HANDLERS */
   handleConnectResponse(data) {
     this.sessionId = data.sessionId;
   }
@@ -94,18 +96,46 @@ export class GameContainer {
   }
 
   handleBroadcastWord(data) {
-    this.isWaitingForOpponent = false;
     playAudio(this.audioBank.opponentFound);
 
+    this.isWaitingForOpponent = false;
     this.currentWord = data.word;
     this.currentOpponent = data.opponentNickname;
     this.isInGame = true;
+    this.hasNotSentWord = true;
   }
 
   handleTypeWordResponse(data) {
     // TODO
+    switch (data.gameMessageType) {
+    case MessageTypes.WORD_MISMATCH:
+      this.handleWordMismatch();
+      break;
+    case MessageTypes.ROUND_WON:
+      this.handleRoundWon(data);
+      break;
+    case MessageTypes.ROUND_LOST:
+      this.handleRoundLost(data);
+      break;
+    default:
+      break;
+    }
   }
 
+  handleWordMismatch() {
+    playAudio(this.audioBank.wordMismatch);
+  }
+
+  handleRoundWon(data) {
+    playAudio(this.audioBank.victoryDing);
+  }
+
+  handleRoundLost(data) {
+    playAudio(this.audioBank.lossDing);
+  }
+  /* /SERVER MESSAGE HANDLERS */
+
+  /* USER INTERACTION HANDLERS */
   handleTerminateGame(data) {
     // TODO
   }
@@ -120,6 +150,14 @@ export class GameContainer {
     this.joinGame();
   }
 
+  handleWordSubmit() {
+    if (this.canSubmitWord) {
+      this.sendWord();
+    }
+  }
+  /* /USER INTERACTION HANDLERS */
+
+  /* APP LOGIC */
   setNickname() {
     this.loadingText = 'Setting nickname...';
     this.isSettingNickname = true;
@@ -137,6 +175,13 @@ export class GameContainer {
     this.sendToServer(message);
   }
 
+  sendWord() {
+    const message = constructMessage(MessageTypes.TYPE_WORD, { word: this.word });
+    this.sendToServer(message);
+  }
+  /* /APP LOGIC */
+
+  /* INITIALIZERS */
   initStateModel() {
     this.isConnectingToServer = false;
     this.isSettingNickname = false;
@@ -160,7 +205,9 @@ export class GameContainer {
   detachDOMListeners() {
 
   }
+  /* /INITIALIZERS */
 
+  /* VISIBLITY LOGIC */
   get showLoadingBanner() {
     return this.isConnectingToServer || !this.sessionId || this.isSettingNickname || this.isWaitingForOpponent;
   }
@@ -181,9 +228,22 @@ export class GameContainer {
     return this.canJoinGame;
   }
 
+  get showGameArea() {
+    return this.isInGame;
+  }
+  /* /VISIBLITY LOGIC */
+
+  /* GATEWAY LOGIC */
+  get canSubmitWord() {
+    return !isEmpty(this.word);
+  }
+  /* /GATEWAY LOGIC /
+
+  /* SHARED UTILS */
   sendToServer(message) {
     sendMessage(this.serverSocket, message);
   }
+  /* /SHARED UTILS */
 }
 
 const playAudio = (audioNode) => {

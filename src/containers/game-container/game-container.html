@@ -1,51 +1,62 @@
 <template>
-  <div class="container">
+  <require from="./game-container.css"></require>
+  <require from="../../styles/utility-styles.css"></require>
+
+  <div class="container no-user-select cursor-default">
     <div class="page-header">
-      <div class="row">
-        <div class="col-lg-8 col-md-7 col-sm-6">
-          <h1>Typerace</h1>
-        </div>
-      </div>
-    </div>
-
-    <div class="row" if.bind="showLoadingBanner">
-      <div class="col-md-12">
-        <h3><i class="fa fa-circle-o-notch fa-spin"></i> ${loadingText}</h3>
-      </div>
-    </div>
-
-    <div class="row" if.bind="showNicknameForm">
-      <div class="col-md-12">
-        <div class="form-group">
-          <h6>Provide a nickname</h5>
-          <input
-            take-focus
-            key-return.call="handleSetNicknameClick()"
-            class="form-control"
-            type="text"
-            value.bind="currentNickname"
-            placeholder="">
-        </div>
-        <button click.trigger="handleSetNicknameClick()"
-          disabled.bind="!canSetNickname"
-          class="btn btn-primary btn-block">Begin</button>
-      </div>
-    </div>
-
-    <div class="row" if.bind="showTutorial">
-      <div class="col-md-12">
-        <p>TODO!</p>
-      </div>
+      <bs-row lg="8" md="7" sm="6">
+        <h1><img style="width:50px;height:50px" src="icon.png"> Typerace</h1>
+      </bs-row>
     </div>
   
-    <div class="row" if.bind="showJoinGameForm">
-      <div class="col-md-12">
-        <button
-          class="btn btn-success btn-block"
-          click.trigger="handleJoinGameClick()">${showTutorial ? 'Got it!' : 'Join game'}</button>
+    <bs-row if.bind="showLoadingBanner">
+      <h3 class="no-user-select cursor-default"><i class="fa fa-circle-o-notch fa-spin"></i> ${loadingText}</h3>
+    </bs-row>
+  
+    <bs-row if.bind="showNicknameForm">
+      <div class="form-group">
+        <h6>Provide a nickname</h5>
+        <input
+          take-focus
+          key-return.call="handleSetNicknameClick()"
+          class="form-control"
+          type="text"
+          value.bind="currentNickname"
+          placeholder="">
       </div>
-    </div>
-  </div>
 
+      <button click.trigger="handleSetNicknameClick()"
+        disabled.bind="!canSetNickname"
+        class="btn btn-primary btn-block">Begin</button>
+    </bs-row>
+
+    <bs-row if.bind="showTutorial">
+      <p>TODO!</p>
+    </bs-row>
+  
+    <bs-row if.bind="showJoinGameForm">
+      <button
+        class="btn btn-success btn-block"
+        click.trigger="handleJoinGameClick()">${showTutorial ? 'Got it!' : 'Join game'}</button>
+    </bs-row>
+
+    <bs-row>
+      
+    </bs-row>
+
+    <bs-row if.bind="showGameArea ||true">
+      <div class="animated fadeIn pulse" if.bind="true">
+        <h2 class="text-center"><small>Challenge:</small></h2>
+        <h2 class="text-center no-user-select cursor-default"><em>${currentWord}aaaaa</em></h2>
+        <input 
+          take-focus
+          type="text"
+          key-return.call="handleWordSubmit()"
+          class="form-control"
+          value.bind="word"
+        >
+      </div>
+    </bs-row>
+  </div> <!--/.container-->
 
 </template>
