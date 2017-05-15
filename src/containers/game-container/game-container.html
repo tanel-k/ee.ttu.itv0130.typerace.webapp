@@ -1,0 +1,36 @@
+<template>
+  <div class="container">
+    <div class="page-header">
+      <div class="row">
+        <div class="col-lg-8 col-md-7 col-sm-6">
+          <h1>Typerace</h1>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" if.bind="showLoadingBanner">
+      <div class="col-md-12">
+        <h3><i class="fa fa-circle-o-notch fa-spin"></i> ${loadingText}</h3>
+      </div>
+    </div>
+    <div class="row" if.bind="showNicknameForm">
+      <div class="col-md-12">
+        <div class="form-group">
+          <h6>Provide a nickname</h5>
+          <input
+            take-focus
+            key-return.call="setNickname()"
+            class="form-control"
+            type="text"
+            value.bind="currentNickname"
+            placeholder="">
+        </div>
+        <button click.trigger="setNickname()"
+          disabled.bind="!canSetNickname"
+          class="btn btn-primary btn-block">Begin</button>
+      </div>
+    </div>
+  </div>
+
+
+</template>
