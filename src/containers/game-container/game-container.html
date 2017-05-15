@@ -2,15 +2,15 @@
   <require from="./game-container.css"></require>
   <require from="../../styles/utility-styles.css"></require>
 
-  <div class="container no-user-select cursor-default">
-    <div class="page-header">
+  <div class="container">
+    <div class="page-header" no-select>
       <bs-row lg="8" md="7" sm="6">
         <h1><img style="width:50px;height:50px" src="icon.png"> Typerace</h1>
       </bs-row>
     </div>
   
     <bs-row if.bind="showLoadingBanner">
-      <h3 class="no-user-select cursor-default"><i class="fa fa-circle-o-notch fa-spin"></i> ${loadingText}</h3>
+      <h3 no-select><i class="fa fa-circle-o-notch fa-spin"></i> ${loadingText}</h3>
     </bs-row>
   
     <bs-row if.bind="showNicknameForm">
@@ -41,20 +41,36 @@
     </bs-row>
 
     <bs-row>
-      
+      <h4 no-select class="text-right">Score:
+        <span 
+          id="score-container">
+          <i class="fa fa-star"></i> ${currentScore}
+      </span>
+      </h4>
     </bs-row>
 
     <bs-row if.bind="showGameArea ||true">
       <div class="animated fadeIn pulse" if.bind="true">
-        <h2 class="text-center"><small>Challenge:</small></h2>
-        <h2 class="text-center no-user-select cursor-default"><em>${currentWord}aaaaa</em></h2>
+        <div no-select>
+          <h2 class="text-center"><small>Challenge:</small></h2>
+          <h2 class="text-center"><em>${currentWord}aaaaa</em></h2>
+        </div>
         <input 
           take-focus
           type="text"
           key-return.call="handleWordSubmit()"
           class="form-control"
+          disabled.bind="isWordInputDisabled"
           value.bind="word"
         >
+      </div>
+    </bs-row>
+
+    <bs-row>
+      <div id="victory-banner" no-select class="animated fadeIn ${!showWinStatus ? 'hidden' : ''}">
+        <h2 class="text-center ${didWin ? 'victory-text' : 'loss-text'}">
+          <strong>${didWin ? 'You won!' : 'You lost!'}</strong>
+        </h2>
       </div>
     </bs-row>
   </div> <!--/.container-->

@@ -1,5 +1,8 @@
 import { inject, bindable } from 'aurelia-framework';
 
+import 'jquery';
+import 'jquery-ui-dist';
+
 import { DataAPI } from '../../gateways/data/data-api';
 import { ConnectionAPI } from '../../gateways/connection/connection-api';
 
@@ -38,6 +41,36 @@ export class GameContainer {
 
   detached() {
     this.detachDOMListeners();
+  }
+
+  /* INITIALIZERS */
+  initStateModel() {
+    this.isConnectingToServer = false;
+    this.isSettingNickname = false;
+    this.isWaitingForOpponent = false;
+    this.isCheckingWord = false;
+
+    this.showWinStatus = false;
+    this.canJoinGame = false;
+    this.canDisplayTutorial = false;
+
+    this.sessionId = null;
+    this.didWin = null;
+    this.isNicknameSet = false;
+    this.loadingText = null;
+    this.currentScore = 0;
+  }
+
+  initDOMHooks() {
+    this.getVictoryBanner = () => (this.element.querySelector('#victory-banner'));
+  }
+
+  attachDOMListeners() {
+
+  }
+
+  detachDOMListeners() {
+
   }
 
   connectToServer() {
@@ -80,6 +113,7 @@ export class GameContainer {
       }
     };
   }
+  /* /INITIALIZERS */
 
   /* SERVER MESSAGE HANDLERS */
   handleConnectResponse(data) {
@@ -106,7 +140,7 @@ export class GameContainer {
   }
 
   handleTypeWordResponse(data) {
-    // TODO
+    this.isCheckingWord = false;
     switch (data.gameMessageType) {
     case MessageTypes.WORD_MISMATCH:
       this.handleWordMismatch();
@@ -128,10 +162,34 @@ export class GameContainer {
 
   handleRoundWon(data) {
     playAudio(this.audioBank.victoryDing);
+    this.showWinStatus = true;
+    this.didWin = true;
+
+    const victoryBanner = this.getVictoryBanner();
+    victoryBanner.classList.remove('fadeOut');
+    setTimeout(() => {
+      victoryBanner.classList.add('fadeOut');
+      setTimeout(() => {
+        this.showWinStatus = false;
+        this.didWin = null;
+      }, 500);
+    }, 1000);
   }
 
   handleRoundLost(data) {
     playAudio(this.audioBank.lossDing);
+    this.showWinStatus = true;
+    this.didWin = false;
+    const victoryBanner = this.getVictoryBanner();
+
+    victoryBanner.classList.remove('fadeOut');
+    setTimeout(() => {
+      victoryBanner.classList.add('fadeOut');
+      setTimeout(() => {
+        this.showWinStatus = false;
+        this.didWin = null;
+      }, 500);
+    }, 1000);
   }
   /* /SERVER MESSAGE HANDLERS */
 
@@ -176,36 +234,11 @@ export class GameContainer {
   }
 
   sendWord() {
+    this.isCheckingWord = true;
     const message = constructMessage(MessageTypes.TYPE_WORD, { word: this.word });
     this.sendToServer(message);
   }
   /* /APP LOGIC */
-
-  /* INITIALIZERS */
-  initStateModel() {
-    this.isConnectingToServer = false;
-    this.isSettingNickname = false;
-
-    this.canJoinGame = false;
-    this.canDisplayTutorial = false;
-
-    this.sessionId = null;
-    this.isNicknameSet = false;
-    this.loadingText = null;
-  }
-
-  initDOMHooks() {
-
-  }
-
-  attachDOMListeners() {
-
-  }
-
-  detachDOMListeners() {
-
-  }
-  /* /INITIALIZERS */
 
   /* VISIBLITY LOGIC */
   get showLoadingBanner() {
@@ -231,11 +264,16 @@ export class GameContainer {
   get showGameArea() {
     return this.isInGame;
   }
+
   /* /VISIBLITY LOGIC */
 
   /* GATEWAY LOGIC */
   get canSubmitWord() {
     return !isEmpty(this.word);
+  }
+
+  get isWordInputDisabled() {
+    return this.isCheckingWord;
   }
   /* /GATEWAY LOGIC /
 

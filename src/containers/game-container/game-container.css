@@ -1,0 +1,11 @@
+.victory-text {
+  color: yellowgreen;
+}
+
+.loss-text {
+  color: palevioletred;
+}
+
+#score-container {
+  color: gold;
+}

@@ -119,7 +119,7 @@ define('resources/index',['exports'], function (exports) {
   });
   exports.configure = configure;
   function configure(config) {
-    config.globalResources(['./attributes/key-return', './attributes/take-focus', './elements/ui-wrappers/bs-row']);
+    config.globalResources(['./attributes/key-return', './attributes/take-focus', './attributes/no-select', './elements/ui-wrappers/bs-row']);
   }
 });
 define('containers/game-container/game-container',['exports', 'aurelia-framework', '../../gateways/data/data-api', '../../gateways/connection/connection-api', '../../lib/string-utils', '../../lib/message-types'], function (exports, _aureliaFramework, _dataApi, _connectionApi, _stringUtils, _messageTypes) {
@@ -268,18 +268,47 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.detachDOMListeners();
     };
 
+    GameContainer.prototype.initStateModel = function initStateModel() {
+      this.isConnectingToServer = false;
+      this.isSettingNickname = false;
+      this.isWaitingForOpponent = false;
+      this.isCheckingWord = false;
+
+      this.showWinStatus = false;
+      this.canJoinGame = false;
+      this.canDisplayTutorial = false;
+
+      this.sessionId = null;
+      this.didWin = null;
+      this.isNicknameSet = false;
+      this.loadingText = null;
+      this.currentScore = 0;
+    };
+
+    GameContainer.prototype.initDOMHooks = function initDOMHooks() {
+      var _this = this;
+
+      this.getVictoryBanner = function () {
+        return _this.element.querySelector('#victory-banner');
+      };
+    };
+
+    GameContainer.prototype.attachDOMListeners = function attachDOMListeners() {};
+
+    GameContainer.prototype.detachDOMListeners = function detachDOMListeners() {};
+
     GameContainer.prototype.connectToServer = function connectToServer() {
       var serverSocket = this.serverSocket = this.connectionAPI.getGameSocketConnection();
       this.hookUpServerSocket(serverSocket);
     };
 
     GameContainer.prototype.hookUpServerSocket = function hookUpServerSocket(serverSocket) {
-      var _this = this;
+      var _this2 = this;
 
       this.isConnectingToServer = true;
       this.loadingText = 'Connecting to server...';
       serverSocket.onopen = function (event) {
-        _this.isConnectingToServer = false;
+        _this2.isConnectingToServer = false;
       };
 
       serverSocket.onclose = function (event) {};
@@ -289,19 +318,19 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
         console.log(data);
         switch (data.type) {
           case MessageTypes.CONNECT_RESPONSE:
-            _this.handleConnectResponse(data);
+            _this2.handleConnectResponse(data);
             break;
           case MessageTypes.SET_NICKNAME_RESPONSE:
-            _this.handleSetNicknameResponse(data);
+            _this2.handleSetNicknameResponse(data);
             break;
           case MessageTypes.BROADCAST_WORD:
-            _this.handleBroadcastWord(data);
+            _this2.handleBroadcastWord(data);
             break;
           case MessageTypes.TYPE_WORD_RESPONSE:
-            _this.handleTypeWordResponse(data);
+            _this2.handleTypeWordResponse(data);
             break;
           case MessageTypes.TERMINATE_GAME:
-            _this.handleTerminateGame(data);
+            _this2.handleTerminateGame(data);
             break;
           default:
             break;
@@ -333,6 +362,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.handleTypeWordResponse = function handleTypeWordResponse(data) {
+      this.isCheckingWord = false;
       switch (data.gameMessageType) {
         case MessageTypes.WORD_MISMATCH:
           this.handleWordMismatch();
@@ -353,11 +383,39 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.handleRoundWon = function handleRoundWon(data) {
+      var _this3 = this;
+
       playAudio(this.audioBank.victoryDing);
+      this.showWinStatus = true;
+      this.didWin = true;
+
+      var victoryBanner = this.getVictoryBanner();
+      victoryBanner.classList.remove('fadeOut');
+      setTimeout(function () {
+        victoryBanner.classList.add('fadeOut');
+        setTimeout(function () {
+          _this3.showWinStatus = false;
+          _this3.didWin = null;
+        }, 500);
+      }, 1000);
     };
 
     GameContainer.prototype.handleRoundLost = function handleRoundLost(data) {
+      var _this4 = this;
+
       playAudio(this.audioBank.lossDing);
+      this.showWinStatus = true;
+      this.didWin = false;
+      var victoryBanner = this.getVictoryBanner();
+
+      victoryBanner.classList.remove('fadeOut');
+      setTimeout(function () {
+        victoryBanner.classList.add('fadeOut');
+        setTimeout(function () {
+          _this4.showWinStatus = false;
+          _this4.didWin = null;
+        }, 500);
+      }, 1000);
     };
 
     GameContainer.prototype.handleTerminateGame = function handleTerminateGame(data) {};
@@ -396,27 +454,10 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.sendWord = function sendWord() {
+      this.isCheckingWord = true;
       var message = constructMessage(MessageTypes.TYPE_WORD, { word: this.word });
       this.sendToServer(message);
     };
-
-    GameContainer.prototype.initStateModel = function initStateModel() {
-      this.isConnectingToServer = false;
-      this.isSettingNickname = false;
-
-      this.canJoinGame = false;
-      this.canDisplayTutorial = false;
-
-      this.sessionId = null;
-      this.isNicknameSet = false;
-      this.loadingText = null;
-    };
-
-    GameContainer.prototype.initDOMHooks = function initDOMHooks() {};
-
-    GameContainer.prototype.attachDOMListeners = function attachDOMListeners() {};
-
-    GameContainer.prototype.detachDOMListeners = function detachDOMListeners() {};
 
     GameContainer.prototype.sendToServer = function sendToServer(message) {
       sendMessage(this.serverSocket, message);
@@ -456,6 +497,11 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       key: 'canSubmitWord',
       get: function get() {
         return !(0, _stringUtils.isEmpty)(this.word);
+      }
+    }, {
+      key: 'isWordInputDisabled',
+      get: function get() {
+        return this.isCheckingWord;
       }
     }]);
 
@@ -739,9 +785,50 @@ define('resources/elements/ui-wrappers/bs-row',['exports', 'aurelia-framework'],
     }
   })), _class2)) || _class;
 });
+define('resources/attributes/no-select',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.NoSelect = undefined;
+
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  var _dec, _dec2, _class;
+
+  var NoSelect = exports.NoSelect = (_dec = (0, _aureliaFramework.customAttribute)('no-select'), _dec2 = (0, _aureliaFramework.inject)(Element), _dec(_class = _dec2(_class = function () {
+    function NoSelect(element) {
+      _classCallCheck(this, NoSelect);
+
+      this.element = element;
+    }
+
+    NoSelect.prototype.attached = function attached() {
+      var element = this.element;
+      if (!element.style) {
+        element.style = {};
+      }
+
+      element.style['user-select'] = 'none';
+      element.style['-webkit-user-select'] = 'none';
+      element.style['-moz-user-select'] = 'none';
+      element.style['-ms-user-select'] = 'none';
+      element.style.cursor = 'default';
+    };
+
+    return NoSelect;
+  }()) || _class) || _class);
+});
 define('text!app.html', ['module'], function(module) { module.exports = "<template><router-view></router-view></template>"; });
-define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><div class=\"container no-user-select cursor-default\"><div class=\"page-header\"><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row if.bind=\"showLoadingBanner\"><h3 class=\"no-user-select cursor-default\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row></bs-row><bs-row if.bind=\"showGameArea ||true\"><div class=\"animated fadeIn pulse\" if.bind=\"true\"><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center no-user-select cursor-default\"><em>${currentWord}aaaaa</em></h2><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" value.bind=\"word\"></div></bs-row></div></template>"; });
+define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><div class=\"container\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row if.bind=\"showLoadingBanner\"><h3 no-select><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row><h4 no-select class=\"text-right\">Score: <span id=\"score-container\"><i class=\"fa fa-star\"></i> ${currentScore}</span></h4></bs-row><bs-row if.bind=\"showGameArea ||true\"><div class=\"animated fadeIn pulse\" if.bind=\"true\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}aaaaa</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"word\"></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong>${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template>"; });
 define('text!resources/elements/ui-wrappers/bs-row.html', ['module'], function(module) { module.exports = "<template><div class=\"row\"><div class=\"col-xs-${xs} col-sm-${sm} col-md-${md} col-lg-${lg}\"><slot></slot></div></div></template>"; });
-define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ""; });
-define('text!styles/utility-styles.css', ['module'], function(module) { module.exports = ".no-user-select {\r\n  user-select: none;\r\n  -webkit-user-select: none;\r\n  -moz-user-select: none;\r\n  -ms-user-select: none;\r\n}\r\n\r\n.cursor-default {\r\n  cursor: default !important;\r\n}\r\n"; });
+define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: yellowgreen;\r\n}\r\n\r\n.loss-text {\r\n  color: palevioletred;\r\n}\r\n\r\n#score-container {\r\n  color: gold;\r\n}\r\n"; });
+define('text!styles/utility-styles.css', ['module'], function(module) { module.exports = ""; });
+define('text!resources/attributes/no-select.html', ['module'], function(module) { module.exports = "<template><require from=\"./no-select.css\"></require></template>"; });
+define('text!resources/attributes/no-select.css', ['module'], function(module) { module.exports = ""; });
 //# sourceMappingURL=app-bundle.js.map

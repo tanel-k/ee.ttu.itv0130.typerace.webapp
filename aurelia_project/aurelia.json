@@ -130,6 +130,18 @@
           },
           "aurelia-http-client",
           "jquery",
+            {
+            "name": "jquery-ui-dist",
+            "path": "../node_modules/jquery-ui-dist",
+            "main": "jquery-ui",
+            "deps": [
+              "jquery"
+            ],
+            "exports": "$",
+            "resources": [
+              "jquery-ui.css"
+            ]
+          },
           {
             "name": "bootstrap",
             "path": "../node_modules/bootstrap/dist",
