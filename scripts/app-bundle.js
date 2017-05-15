@@ -250,8 +250,11 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
         _this.isConnectingToServer = false;
       };
 
+      serverSocket.onclose = function (event) {};
+
       serverSocket.onmessage = function (event) {
         var data = JSON.parse(event.data);
+        console.log(data);
         switch (data.type) {
           case MessageTypes.CONNECT_RESPONSE:
             _this.handleConnectResponse(data);
@@ -259,10 +262,18 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
           case MessageTypes.SET_NICKNAME_RESPONSE:
             _this.handleSetNicknameResponse(data);
             break;
+          case MessageTypes.BROADCAST_WORD:
+            _this.handleBroadcastWord(data);
+            break;
+          case MessageTypes.TYPE_WORD_RESPONSE:
+            _this.handleTypeWordResponse(data);
+            break;
+          case MessageTypes.TERMINATE_GAME:
+            _this.handleTerminateGame(data);
+            break;
           default:
             break;
         }
-        console.log(data);
       };
     };
 
@@ -273,13 +284,33 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     GameContainer.prototype.handleSetNicknameResponse = function handleSetNicknameResponse(data) {
       this.isSettingNickname = false;
       this.isNicknameSet = true;
+
       this.canDisplayTutorial = true;
       this.canJoinGame = true;
+      this.isInGame = false;
     };
+
+    GameContainer.prototype.handleBroadcastWord = function handleBroadcastWord(data) {
+      this.isWaitingForOpponent = false;
+      playAudio(this.audioBank.opponentFound);
+
+      this.currentWord = data.word;
+      this.currentOpponent = data.opponentNickname;
+      this.isInGame = true;
+    };
+
+    GameContainer.prototype.handleTypeWordResponse = function handleTypeWordResponse(data) {};
+
+    GameContainer.prototype.handleTerminateGame = function handleTerminateGame(data) {};
 
     GameContainer.prototype.handleSetNicknameClick = function handleSetNicknameClick() {
       playAudio(this.audioBank.closeItem);
       this.setNickname();
+    };
+
+    GameContainer.prototype.handleJoinGameClick = function handleJoinGameClick() {
+      playAudio(this.audioBank.joinGame);
+      this.joinGame();
     };
 
     GameContainer.prototype.setNickname = function setNickname() {
@@ -288,11 +319,6 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       var nickname = this.currentNickname;
       var message = constructMessage(MessageTypes.SET_NICKNAME, { nickname: nickname });
       this.sendToServer(message);
-    };
-
-    GameContainer.prototype.handleJoinGameClick = function handleJoinGameClick() {
-      playAudio(this.audioBank.joinGame);
-      this.joinGame();
     };
 
     GameContainer.prototype.joinGame = function joinGame() {
@@ -470,9 +496,13 @@ define('lib/message-types',['exports'], function (exports) {
   });
   var CONNECT_RESPONSE = exports.CONNECT_RESPONSE = 'CONNECT_RESPONSE';
   var SET_NICKNAME_RESPONSE = exports.SET_NICKNAME_RESPONSE = 'SET_NICKNAME_RESPONSE';
+  var BROADCAST_WORD = exports.BROADCAST_WORD = 'BROADCAST_WORD';
+  var TYPE_WORD_RESPONSE = exports.TYPE_WORD_RESPONSE = 'TYPE_WORD_RESPONSE';
+  var TERMINATE_GAME = exports.TERMINATE_GAME = 'TERMINATE_GAME';
 
   var SET_NICKNAME = exports.SET_NICKNAME = 'SET_NICKNAME';
   var JOIN_GAME = exports.JOIN_GAME = 'JOIN_GAME';
+  var TYPE_WORD = exports.TYPE_WORD = 'TYPE_WORD';
 });
 define('resources/attributes/key-return',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
   'use strict';
@@ -572,5 +602,5 @@ define('resources/attributes/take-focus',['exports', 'aurelia-framework'], funct
   }()) || _class) || _class);
 });
 define('text!app.html', ['module'], function(module) { module.exports = "<template><router-view></router-view></template>"; });
-define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><div class=\"container\"><div class=\"page-header\"><div class=\"row\"><div class=\"col-lg-8 col-md-7 col-sm-6\"><h1>Typerace</h1></div></div></div><div class=\"row\" if.bind=\"showLoadingBanner\"><div class=\"col-md-12\"><h3><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></div></div><div class=\"row\" if.bind=\"showNicknameForm\"><div class=\"col-md-12\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></div></div><div class=\"row\" if.bind=\"showTutorial\"><div class=\"col-md-12\"><p>TODO!</p></div></div><div class=\"row\" if.bind=\"showJoinGameForm\"><div class=\"col-md-12\"><button class=\"btn btn-primary btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></div></div></div></template>"; });
+define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><div class=\"container\"><div class=\"page-header\"><div class=\"row\"><div class=\"col-lg-8 col-md-7 col-sm-6\"><h1>Typerace</h1></div></div></div><div class=\"row\" if.bind=\"showLoadingBanner\"><div class=\"col-md-12\"><h3><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></div></div><div class=\"row\" if.bind=\"showNicknameForm\"><div class=\"col-md-12\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></div></div><div class=\"row\" if.bind=\"showTutorial\"><div class=\"col-md-12\"><p>TODO!</p></div></div><div class=\"row\" if.bind=\"showJoinGameForm\"><div class=\"col-md-12\"><button class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></div></div></div></template>"; });
 //# sourceMappingURL=app-bundle.js.map

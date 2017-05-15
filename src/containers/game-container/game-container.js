@@ -51,8 +51,13 @@ export class GameContainer {
       this.isConnectingToServer = false;
     };
 
+    serverSocket.onclose = (event) => {
+      // TODO
+    };
+
     serverSocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log(data);
       switch (data.type) {
       case MessageTypes.CONNECT_RESPONSE:
         this.handleConnectResponse(data);
@@ -60,10 +65,18 @@ export class GameContainer {
       case MessageTypes.SET_NICKNAME_RESPONSE:
         this.handleSetNicknameResponse(data);
         break;
+      case MessageTypes.BROADCAST_WORD:
+        this.handleBroadcastWord(data);
+        break;
+      case MessageTypes.TYPE_WORD_RESPONSE:
+        this.handleTypeWordResponse(data);
+        break;
+      case MessageTypes.TERMINATE_GAME:
+        this.handleTerminateGame(data);
+        break;
       default:
         break;
       }
-      console.log(data);
     };
   }
 
@@ -74,13 +87,37 @@ export class GameContainer {
   handleSetNicknameResponse(data) {
     this.isSettingNickname = false;
     this.isNicknameSet = true;
+
     this.canDisplayTutorial = true;
     this.canJoinGame = true;
+    this.isInGame = false;
+  }
+
+  handleBroadcastWord(data) {
+    this.isWaitingForOpponent = false;
+    playAudio(this.audioBank.opponentFound);
+
+    this.currentWord = data.word;
+    this.currentOpponent = data.opponentNickname;
+    this.isInGame = true;
+  }
+
+  handleTypeWordResponse(data) {
+    // TODO
+  }
+
+  handleTerminateGame(data) {
+    // TODO
   }
 
   handleSetNicknameClick() {
     playAudio(this.audioBank.closeItem);
     this.setNickname();
+  }
+
+  handleJoinGameClick() {
+    playAudio(this.audioBank.joinGame);
+    this.joinGame();
   }
 
   setNickname() {
@@ -89,11 +126,6 @@ export class GameContainer {
     const nickname = this.currentNickname;
     const message = constructMessage(MessageTypes.SET_NICKNAME, { nickname });
     this.sendToServer(message);
-  }
-
-  handleJoinGameClick() {
-    playAudio(this.audioBank.joinGame);
-    this.joinGame();
   }
 
   joinGame() {
