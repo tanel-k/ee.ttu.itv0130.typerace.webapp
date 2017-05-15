@@ -166,6 +166,7 @@ export class GameContainer {
     playAudio(this.audioBank.victoryDing);
     this.showWinStatus = true;
     this.didWin = true;
+    this.typedWord = '';
 
     const victoryBanner = this.getVictoryBanner();
     victoryBanner.classList.remove('fadeOut');
@@ -185,6 +186,7 @@ export class GameContainer {
     playAudio(this.audioBank.lossDing);
     this.showWinStatus = true;
     this.didWin = false;
+    this.typedWord = '';
 
     const victoryBanner = this.getVictoryBanner();
     victoryBanner.classList.remove('fadeOut');
@@ -241,7 +243,7 @@ export class GameContainer {
             playAudio(this.audioBank.loserPointDing);
           }
 
-          $scoreWrapper.effect('shake', { times: 1 }, 200);
+          $scoreWrapper.effect('shake', { times: 1 }, 100);
           $starIcon.remove();
           this.currentScore += amount;
         });
@@ -310,7 +312,7 @@ export class GameContainer {
 
   sendWord() {
     this.isCheckingWord = true;
-    const message = constructMessage(MessageTypes.TYPE_WORD, { word: this.word });
+    const message = constructMessage(MessageTypes.TYPE_WORD, { word: this.typedWord });
     this.sendToServer(message);
   }
   /* /APP LOGIC */
@@ -353,7 +355,7 @@ export class GameContainer {
 
   /* GATEWAY LOGIC */
   get canSubmitWord() {
-    return !isEmpty(this.word);
+    return !isEmpty(this.typedWord);
   }
 
   get isWordInputDisabled() {
