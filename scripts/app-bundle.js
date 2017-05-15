@@ -214,6 +214,17 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     }
 
     GameContainer.prototype.attached = function attached() {
+      this.audioBank = {
+        victoryDing: new Audio('media/audio/victory-ding.ogg'),
+        lossDing: new Audio('media/audio/loss-ding.ogg'),
+        closeItem: new Audio('media/audio/close-item.ogg'),
+        loserPointDing: new Audio('media/audio/loser-point-ding.ogg'),
+        winnerPointDing: new Audio('media/audio/winner-point-ding.ogg'),
+        wordMismatch: new Audio('media/audio/word-mismatch.ogg'),
+        joinGame: new Audio('media/audio/join-game.ogg'),
+        opponentFound: new Audio('media/audio/opponent-found.ogg')
+      };
+
       this.initStateModel();
       this.initDOMHooks();
       this.attachDOMListeners();
@@ -238,6 +249,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       serverSocket.onopen = function (event) {
         _this.isConnectingToServer = false;
       };
+
       serverSocket.onmessage = function (event) {
         var data = JSON.parse(event.data);
         switch (data.type) {
@@ -261,6 +273,13 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     GameContainer.prototype.handleSetNicknameResponse = function handleSetNicknameResponse(data) {
       this.isSettingNickname = false;
       this.isNicknameSet = true;
+      this.canDisplayTutorial = true;
+      this.canJoinGame = true;
+    };
+
+    GameContainer.prototype.handleSetNicknameClick = function handleSetNicknameClick() {
+      playAudio(this.audioBank.closeItem);
+      this.setNickname();
     };
 
     GameContainer.prototype.setNickname = function setNickname() {
@@ -271,12 +290,30 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.sendToServer(message);
     };
 
+    GameContainer.prototype.handleJoinGameClick = function handleJoinGameClick() {
+      playAudio(this.audioBank.joinGame);
+      this.joinGame();
+    };
+
+    GameContainer.prototype.joinGame = function joinGame() {
+      this.loadingText = 'Waiting for an opponent...';
+      this.isWaitingForOpponent = true;
+      this.canDisplayTutorial = false;
+      this.canJoinGame = false;
+      var message = constructMessage(MessageTypes.JOIN_GAME);
+      this.sendToServer(message);
+    };
+
     GameContainer.prototype.initStateModel = function initStateModel() {
       this.isConnectingToServer = false;
       this.isSettingNickname = false;
 
+      this.canJoinGame = false;
+      this.canDisplayTutorial = false;
+
       this.sessionId = null;
       this.isNicknameSet = false;
+      this.loadingText = null;
     };
 
     GameContainer.prototype.initDOMHooks = function initDOMHooks() {};
@@ -292,7 +329,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     _createClass(GameContainer, [{
       key: 'showLoadingBanner',
       get: function get() {
-        return this.isConnectingToServer || !this.sessionId || this.isSettingNickname;
+        return this.isConnectingToServer || !this.sessionId || this.isSettingNickname || this.isWaitingForOpponent;
       }
     }, {
       key: 'showNicknameForm',
@@ -303,6 +340,16 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       key: 'canSetNickname',
       get: function get() {
         return !(0, _stringUtils.isEmpty)(this.currentNickname);
+      }
+    }, {
+      key: 'showTutorial',
+      get: function get() {
+        return this.canDisplayTutorial;
+      }
+    }, {
+      key: 'showJoinGameForm',
+      get: function get() {
+        return this.canJoinGame;
       }
     }]);
 
@@ -315,11 +362,17 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
   })), _class2)) || _class);
 
 
+  var playAudio = function playAudio(audioNode) {
+    audioNode.cloneNode().play();
+  };
+
   var sendMessage = function sendMessage(socket, message) {
     socket.send(JSON.stringify(message));
   };
 
-  var constructMessage = function constructMessage(type, content) {
+  var constructMessage = function constructMessage(type) {
+    var content = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
     return _extends({
       type: type
     }, content);
@@ -519,5 +572,5 @@ define('resources/attributes/take-focus',['exports', 'aurelia-framework'], funct
   }()) || _class) || _class);
 });
 define('text!app.html', ['module'], function(module) { module.exports = "<template><router-view></router-view></template>"; });
-define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><div class=\"container\"><div class=\"page-header\"><div class=\"row\"><div class=\"col-lg-8 col-md-7 col-sm-6\"><h1>Typerace</h1></div></div></div><div class=\"row\" if.bind=\"showLoadingBanner\"><div class=\"col-md-12\"><h3><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></div></div><div class=\"row\" if.bind=\"showNicknameForm\"><div class=\"col-md-12\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"setNickname()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"setNickname()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></div></div></div></template>"; });
+define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><div class=\"container\"><div class=\"page-header\"><div class=\"row\"><div class=\"col-lg-8 col-md-7 col-sm-6\"><h1>Typerace</h1></div></div></div><div class=\"row\" if.bind=\"showLoadingBanner\"><div class=\"col-md-12\"><h3><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></div></div><div class=\"row\" if.bind=\"showNicknameForm\"><div class=\"col-md-12\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></div></div><div class=\"row\" if.bind=\"showTutorial\"><div class=\"col-md-12\"><p>TODO!</p></div></div><div class=\"row\" if.bind=\"showJoinGameForm\"><div class=\"col-md-12\"><button class=\"btn btn-primary btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></div></div></div></template>"; });
 //# sourceMappingURL=app-bundle.js.map

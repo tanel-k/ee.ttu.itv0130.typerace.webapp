@@ -17,6 +17,17 @@ export class GameContainer {
   }
 
   attached() {
+    this.audioBank = {
+      victoryDing: new Audio('media/audio/victory-ding.ogg'),
+      lossDing: new Audio('media/audio/loss-ding.ogg'),
+      closeItem: new Audio('media/audio/close-item.ogg'),
+      loserPointDing: new Audio('media/audio/loser-point-ding.ogg'),
+      winnerPointDing: new Audio('media/audio/winner-point-ding.ogg'),
+      wordMismatch: new Audio('media/audio/word-mismatch.ogg'),
+      joinGame: new Audio('media/audio/join-game.ogg'),
+      opponentFound: new Audio('media/audio/opponent-found.ogg')
+    };
+
     this.initStateModel();
     this.initDOMHooks();
     this.attachDOMListeners();
@@ -39,6 +50,7 @@ export class GameContainer {
     serverSocket.onopen = (event) => {
       this.isConnectingToServer = false;
     };
+
     serverSocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       switch (data.type) {
@@ -62,6 +74,13 @@ export class GameContainer {
   handleSetNicknameResponse(data) {
     this.isSettingNickname = false;
     this.isNicknameSet = true;
+    this.canDisplayTutorial = true;
+    this.canJoinGame = true;
+  }
+
+  handleSetNicknameClick() {
+    playAudio(this.audioBank.closeItem);
+    this.setNickname();
   }
 
   setNickname() {
@@ -72,12 +91,30 @@ export class GameContainer {
     this.sendToServer(message);
   }
 
+  handleJoinGameClick() {
+    playAudio(this.audioBank.joinGame);
+    this.joinGame();
+  }
+
+  joinGame() {
+    this.loadingText = 'Waiting for an opponent...';
+    this.isWaitingForOpponent = true;
+    this.canDisplayTutorial = false;
+    this.canJoinGame = false;
+    const message = constructMessage(MessageTypes.JOIN_GAME);
+    this.sendToServer(message);
+  }
+
   initStateModel() {
     this.isConnectingToServer = false;
     this.isSettingNickname = false;
 
+    this.canJoinGame = false;
+    this.canDisplayTutorial = false;
+
     this.sessionId = null;
     this.isNicknameSet = false;
+    this.loadingText = null;
   }
 
   initDOMHooks() {
@@ -93,7 +130,7 @@ export class GameContainer {
   }
 
   get showLoadingBanner() {
-    return this.isConnectingToServer || !this.sessionId || this.isSettingNickname;
+    return this.isConnectingToServer || !this.sessionId || this.isSettingNickname || this.isWaitingForOpponent;
   }
 
   get showNicknameForm() {
@@ -104,16 +141,28 @@ export class GameContainer {
     return !isEmpty(this.currentNickname);
   }
 
+  get showTutorial() {
+    return this.canDisplayTutorial;
+  }
+
+  get showJoinGameForm() {
+    return this.canJoinGame;
+  }
+
   sendToServer(message) {
     sendMessage(this.serverSocket, message);
   }
 }
 
+const playAudio = (audioNode) => {
+  audioNode.cloneNode().play();
+};
+
 const sendMessage = (socket, message) => {
   socket.send(JSON.stringify(message));
 };
 
-const constructMessage = (type, content) => {
+const constructMessage = (type, content = {}) => {
   return {
     type,
     ...content

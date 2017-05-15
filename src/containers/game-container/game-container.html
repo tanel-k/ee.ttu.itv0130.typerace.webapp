@@ -13,21 +13,36 @@
         <h3><i class="fa fa-circle-o-notch fa-spin"></i> ${loadingText}</h3>
       </div>
     </div>
+
     <div class="row" if.bind="showNicknameForm">
       <div class="col-md-12">
         <div class="form-group">
           <h6>Provide a nickname</h5>
           <input
             take-focus
-            key-return.call="setNickname()"
+            key-return.call="handleSetNicknameClick()"
             class="form-control"
             type="text"
             value.bind="currentNickname"
             placeholder="">
         </div>
-        <button click.trigger="setNickname()"
+        <button click.trigger="handleSetNicknameClick()"
           disabled.bind="!canSetNickname"
           class="btn btn-primary btn-block">Begin</button>
+      </div>
+    </div>
+
+    <div class="row" if.bind="showTutorial">
+      <div class="col-md-12">
+        <p>TODO!</p>
+      </div>
+    </div>
+  
+    <div class="row" if.bind="showJoinGameForm">
+      <div class="col-md-12">
+        <button
+          class="btn btn-primary btn-block"
+          click.trigger="handleJoinGameClick()">${showTutorial ? 'Got it!' : 'Join game'}</button>
       </div>
     </div>
   </div>
