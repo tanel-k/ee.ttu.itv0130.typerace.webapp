@@ -22,7 +22,7 @@
 }
 
 #opponent-wrapper {
-  color: black;
+  color: #444444;
   width: 400px;
   float: left;
   display: block;
@@ -33,10 +33,4 @@
 
 .type-area {
   height: 170px !important;
-}
-
-.history-section {
-  position: absolute;
-  left: 50px;
-  top: 60px;
 }
