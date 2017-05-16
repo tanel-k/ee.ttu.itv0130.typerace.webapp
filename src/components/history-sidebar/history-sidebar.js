@@ -27,27 +27,44 @@ export class HistorySidebar {
 
   initDOMHooks() {
     this.historyContainer = this.element.querySelector('.history-container');
-    this.closeButton = this.element.querySelector('.close-button');
+    this.closeButton = this.element.querySelector('.close-history-button');
+    this.historyIcon = this.element.querySelector('.history-icon');
+    this.$historyIcon = $(this.historyIcon);
+  }
+
+  get winCount() {
+    if (!this.scoreEntries) {
+      return 0;
+    }
+
+    return this.scoreEntries.reduce((prevValue, currEntry) => {
+      if (currEntry.didWin) {
+        return prevValue + 1;
+      }
+
+      return prevValue;
+    }, 0);
+  }
+
+  get lossCount() {
+    if (!this.scoreEntries) {
+      return 0;
+    }
+
+    return this.scoreEntries.length - this.winCount;
   }
 
   attachEventListeners() {
-    this.historyContainer.addEventListener('click', () => {
-      this.activateHistoryContainer();
+    this.historyContainer.addEventListener('click', () => this.activateHistoryContainer());
+    this.closeButton.addEventListener('click', (event) =>  {
+      event.stopPropagation();
+      this.deactivateHistoryContainer();
     });
 
     this.ea.subscribe(eventTypes.NewScore, event => {
       this.addScoreEntry(event.scoreData);
-      /*
-      this.animatePriceLabel();
-      this.audioBank.cartClank.cloneNode().play();
-      this.$cartIcon.effect('shake', { times: 2 }, 200);
-      */
+      this.$historyIcon.effect('highlight', { times: 1 }, 500);
     });
-/*
-    this.closeButton.addEventListener('click', () => {
-      this.deactivateHistoryContainer();
-    });
-*/
   }
 
   activateHistoryContainer() {

@@ -2,7 +2,7 @@
   <require from="./game-container.css"></require>
   <require from="../../styles/utility-styles.css"></require>
 
-  <compose view-model="../../components/history-sidebar/history-sidebar" 
+  <compose if.bind="showHistorySidebar" view-model="../../components/history-sidebar/history-sidebar" 
     model.bind="{ }">
   </compose>
 
@@ -14,9 +14,6 @@
     </div>
 
     <bs-row>
-      <h4>
-
-      </h4>
       <h4 no-select id="score-container" class="${!showCurrentScore ? 'hidden' : ''}">
         <span id="opponent-wrapper" if.bind="currentOpponent">
           <i class="fa fa-user"></i> Opponent: <em>${currentOpponent}</em>

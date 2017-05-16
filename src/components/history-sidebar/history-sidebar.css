@@ -17,6 +17,8 @@
   width: 500px;
   overflow: visible;
   cursor: default !important;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .history-container:not(.active):hover {
@@ -31,6 +33,10 @@
   text-align: center;
   vertical-align: middle;
   font-size:20px;
+}
+
+.history-container:not(.active) .history-heading .history-text {
+  left: 60px;
 }
 
 .history-line > .history-text {
@@ -71,6 +77,20 @@
   width:190px;
 }
 
+.close-history-button {
+  position: absolute;
+  padding-right: 10px;
+  padding-bottom: 0;
+  left: 90%;
+  top: 5px;
+  display: inline-block;
+  cursor: pointer !important;
+}
+
+.close-history-button:hover > i {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .page-overlay {
   opacity:    0.5; 
   background: #000; 
@@ -79,7 +99,7 @@
   z-index:    999;
   top:        0; 
   left:       0; 
-  position:   fixed; 
+  position:   fixed;
 }
 
 .winner-entry {

@@ -2,25 +2,27 @@
   <!-- ADAPTED FROM: https://codepen.io/JFarrow/pen/fFrpg -->
   <require from="./history-sidebar.css"></require>
 
-  <div no-select class="history-container inactive hidden-xs animated fadeIn">
+  <div no-select class="history-container hidden-xs animated fadeIn">
+    <div class="close-history-button"><i class="close-history-button fa fa-times fa-2x"></i></div>
     <div class="history-heading">
-      <i class="fa-sidebar fa fa-history"></i>
-      <h5 class="history-text">
-        History
-      </h5>
+      <i class="fa-sidebar fa fa-history history-icon"></i>
+      <h5 class="history-text">History </h5>
     </div>
-<!--
+
     <div class="history-lines-container">
       <div class="history-line">
-        <span class="history-text">Wins: 30 Losses: 30</span>
+              <span class="history-text"><em>Wins: ${winCount}</em></span>
+      </div>
+      <div class="history-line">
+        <span class="history-text"><em>Losses: ${lossCount}</em></span>
       </div>
     </div>
--->
+
     <table class="table table-hover history-table">
       <thead>
-        <th class="col-xs-4 col-sm-4 col-md-4">Word</th>
-        <th class="col-xs-4 col-sm-4 col-md-4">Your time</th>
-        <th class="col-xs-4 col-sm-4 col-md-4">Opponent's time</th>
+        <th class="col-xs-4">Word</th>
+        <th class="col-xs-4">Your time</th>
+        <th class="col-xs-4">Opponent's time</th>
       </thead>
       <tbody>
         <tr repeat.for="scoreEntry of scoreEntries">

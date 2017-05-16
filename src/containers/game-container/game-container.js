@@ -418,6 +418,10 @@ export class GameContainer {
   get showChallengeWaitArea() {
     return !this.isInRound && this.isWaitingForNextRound;
   }
+
+  get showHistorySidebar() {
+    return this.showCurrentScore;
+  }
   /* /VISIBLITY LOGIC */
 
   /* DISPLAY FORMAT LOGIC */
