@@ -209,7 +209,7 @@ export class GameContainer {
     const $scoreWrapper = $(scoreWrapper);
     const $victoryTextContainer = $(victoryTextContainer);
 
-    const startTop = $victoryTextContainer.offset().top + 25;
+    const startTop = $victoryTextContainer.offset().top + 20;
     const startLeft = $victoryTextContainer.offset().left + 85;
     const starIcon = document.createElement('i');
     starIcon.classList.add('fa');
@@ -236,14 +236,14 @@ export class GameContainer {
         .animate({
           'top': $scoreWrapper.offset().top,
           'left': $scoreWrapper.offset().left
-        }, 750, 'easeInOutExpo', () => {
+        }, 500, 'easeInOutExpo', () => {
           if (victory) {
             playAudio(this.audioBank.winnerPointDing);
           } else {
             playAudio(this.audioBank.loserPointDing);
           }
 
-          $scoreWrapper.effect('shake', { times: 1 }, 100);
+          $scoreWrapper.effect('shake', { times: victory ? 2 : 1 }, 100);
           $starIcon.remove();
           this.currentScore += amount;
         });

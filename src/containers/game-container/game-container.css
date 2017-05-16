@@ -13,3 +13,7 @@
 #score-wrapper {
   color: gold;
 }
+
+.type-area {
+  height: 170px !important;
+}
