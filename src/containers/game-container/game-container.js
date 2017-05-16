@@ -4,12 +4,14 @@ import { EventAggregator } from 'aurelia-event-aggregator';
 import 'jquery';
 import 'jquery-ui-dist';
 
+import environment from '../../environment';
 import { DataAPI } from '../../gateways/data/data-api';
 import { ConnectionAPI } from '../../gateways/connection/connection-api';
 
 import { isEmpty } from '../../lib/string-utils';
 import * as eventTypes from '../../events/event-types';
 import * as MessageTypes from '../../lib/message-types';
+import * as envTypes from '../../consts/environment-types';
 
 @inject(Element, EventAggregator, DataAPI, ConnectionAPI)
 export class GameContainer {
@@ -47,6 +49,7 @@ export class GameContainer {
 
   detached() {
     this.detachDOMListeners();
+    this.clearPingInterval();
   }
 
   /* INITIALIZERS */
@@ -66,6 +69,7 @@ export class GameContainer {
     this.canJoinGame = false;
     this.canDisplayTutorial = false;
 
+    this.pingInterval = null;
     this.isInGame = false;
     this.lastScoreIndex = null;
     this.currentOpponent = null;
@@ -102,13 +106,17 @@ export class GameContainer {
     };
 
     serverSocket.onclose = (event) => {
+      console.warn(event);
       // lock page
       this.isApplicationLocked = true;
+      this.clearPingInterval();
     };
 
     serverSocket.onerror = () => {
+      console.warn(event);
       // lock page
       this.isApplicationLocked = true;
+      this.clearPingInterval();
     };
 
     serverSocket.onmessage = (event) => {
@@ -134,6 +142,21 @@ export class GameContainer {
         break;
       }
     };
+
+    if (environment.type === envTypes.PROD) {
+      // need to ping amazon otherwise the connection dies
+      this.pingInterval = setInterval(() => {
+        console.info('keep-alive');
+        this.sendToServer({ type: 'PING' });
+      }, 5000);
+    }
+  }
+
+  clearPingInterval() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
   }
   /* /INITIALIZERS */
 
