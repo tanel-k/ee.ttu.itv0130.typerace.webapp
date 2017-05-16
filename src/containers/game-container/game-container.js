@@ -186,42 +186,33 @@ export class GameContainer {
   }
 
   handleRoundWon(data) {
-    playAudio(this.audioBank.victoryDing);
-    this.showMessageBanner = false;
-    this.isInRound = false;
-    this.showWinStatus = true;
-    this.challengeWaitText = 'Waiting for opponent to finish...';
-    this.didWin = true;
-    this.typedWord = '';
-
-    const victoryBanner = this.getVictoryBanner();
-    victoryBanner.classList.remove('fadeOut');
-
-    setTimeout(() => this.transferPoints(data.playerScore, true), 500);
-
-    setTimeout(() => {
-      victoryBanner.classList.add('fadeOut');
-      setTimeout(() => {
-        this.showWinStatus = false;
-        this.isWaitingForNextRound = true;
-        this.didWin = null;
-      }, 500);
-    }, 1000);
+    this.handleRoundEnd(data, true);
   }
 
   handleRoundLost(data) {
-    playAudio(this.audioBank.lossDing);
+    this.handleRoundEnd(data, false);
+  }
+
+  handleRoundEnd(data, victory) {
+    if (victory) {
+      playAudio(this.audioBank.victoryDing);
+    } else {
+      playAudio(this.audioBank.lossDing);
+    }
+
     this.showMessageBanner = false;
     this.isInRound = false;
     this.showWinStatus = true;
-    this.challengeWaitText = 'Waiting for next challenge...';
-    this.didWin = false;
+    this.challengeWaitText = victory
+     ? 'Waiting for opponent to finish...'
+     : 'Waiting for next challenge...';
+    this.didWin = victory;
     this.typedWord = '';
 
     const victoryBanner = this.getVictoryBanner();
     victoryBanner.classList.remove('fadeOut');
 
-    setTimeout(() => this.transferPoints(data.playerScore, false), 500);
+    setTimeout(() => this.transferPoints(data.playerScore, victory), 500);
 
     setTimeout(() => {
       victoryBanner.classList.add('fadeOut');

@@ -416,21 +416,34 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.handleRoundWon = function handleRoundWon(data) {
+      this.handleRoundEnd(data, true);
+    };
+
+    GameContainer.prototype.handleRoundLost = function handleRoundLost(data) {
+      this.handleRoundEnd(data, false);
+    };
+
+    GameContainer.prototype.handleRoundEnd = function handleRoundEnd(data, victory) {
       var _this4 = this;
 
-      playAudio(this.audioBank.victoryDing);
+      if (victory) {
+        playAudio(this.audioBank.victoryDing);
+      } else {
+        playAudio(this.audioBank.lossDing);
+      }
+
       this.showMessageBanner = false;
       this.isInRound = false;
       this.showWinStatus = true;
-      this.challengeWaitText = 'Waiting for opponent to finish...';
-      this.didWin = true;
+      this.challengeWaitText = victory ? 'Waiting for opponent to finish...' : 'Waiting for next challenge...';
+      this.didWin = victory;
       this.typedWord = '';
 
       var victoryBanner = this.getVictoryBanner();
       victoryBanner.classList.remove('fadeOut');
 
       setTimeout(function () {
-        return _this4.transferPoints(data.playerScore, true);
+        return _this4.transferPoints(data.playerScore, victory);
       }, 500);
 
       setTimeout(function () {
@@ -443,36 +456,8 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       }, 1000);
     };
 
-    GameContainer.prototype.handleRoundLost = function handleRoundLost(data) {
-      var _this5 = this;
-
-      playAudio(this.audioBank.lossDing);
-      this.showMessageBanner = false;
-      this.isInRound = false;
-      this.showWinStatus = true;
-      this.challengeWaitText = 'Waiting for next challenge...';
-      this.didWin = false;
-      this.typedWord = '';
-
-      var victoryBanner = this.getVictoryBanner();
-      victoryBanner.classList.remove('fadeOut');
-
-      setTimeout(function () {
-        return _this5.transferPoints(data.playerScore, false);
-      }, 500);
-
-      setTimeout(function () {
-        victoryBanner.classList.add('fadeOut');
-        setTimeout(function () {
-          _this5.showWinStatus = false;
-          _this5.isWaitingForNextRound = true;
-          _this5.didWin = null;
-        }, 500);
-      }, 1000);
-    };
-
     GameContainer.prototype.transferPoints = function transferPoints(points, victory) {
-      var _this6 = this;
+      var _this5 = this;
 
       var scoreWrapper = this.getScoreWrapper();
       var victoryTextContainer = this.getVictoryTextContainer();
@@ -505,14 +490,14 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
           'left': $scoreWrapper.offset().left
         }, 500, 'easeInOutExpo', function () {
           if (victory) {
-            playAudio(_this6.audioBank.winnerPointDing);
+            playAudio(_this5.audioBank.winnerPointDing);
           } else {
-            playAudio(_this6.audioBank.loserPointDing);
+            playAudio(_this5.audioBank.loserPointDing);
           }
 
           $scoreWrapper.effect('shake', { times: victory ? 2 : 1 }, 100);
           $starIcon.remove();
-          _this6.currentScore += amount;
+          _this5.currentScore += amount;
         });
       };
 
