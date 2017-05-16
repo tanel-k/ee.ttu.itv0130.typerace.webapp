@@ -468,6 +468,8 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.eventAggregator = eventAggregator;
       this.dataAPI = dataAPI;
       this.connectionAPI = connectionAPI;
+
+      this.initStateModel();
     }
 
     GameContainer.prototype.attached = function attached() {
@@ -495,7 +497,8 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.initStateModel = function initStateModel() {
-      this.isConnectingToServer = false;
+      this.isApplicationLocked = false;
+      this.isConnectingToServer = true;
       this.isSettingNickname = false;
       this.isWaitingForOpponent = false;
       this.isWaitingForNextRound = false;
@@ -508,6 +511,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.canJoinGame = false;
       this.canDisplayTutorial = false;
 
+      this.isInGame = false;
       this.lastScoreIndex = null;
       this.currentOpponent = null;
       this.sessionId = null;
@@ -554,11 +558,17 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
         _this2.isConnectingToServer = false;
       };
 
-      serverSocket.onclose = function (event) {};
+      serverSocket.onclose = function (event) {
+        _this2.isApplicationLocked = true;
+      };
+
+      serverSocket.onerror = function () {
+        _this2.isApplicationLocked = true;
+      };
 
       serverSocket.onmessage = function (event) {
         var data = JSON.parse(event.data);
-        console.log(data);
+
         switch (data.type) {
           case MessageTypes.CONNECT_RESPONSE:
             _this2.handleConnectResponse(data);
@@ -611,7 +621,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.dataAPI.getScoreRequest(this.sessionId, this.lastScoreIndex || '0').send().then(function (response) {
         var roundScores = response.content.roundScores;
 
-        console.log(response.content, roundScores);
+
         roundScores.forEach(function (roundScore) {
           _this3.eventAggregator.publish(new eventTypes.NewScore(roundScore));
           _this3.lastScoreIndex = roundScore.index;
@@ -883,7 +893,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     }, {
       key: 'showGameArea',
       get: function get() {
-        return this.isInGame;
+        return this.isInGame && !this.isConnectingToServer;
       }
     }, {
       key: 'showCurrentScore',
@@ -1243,11 +1253,30 @@ define('resources/elements/ui-wrappers/bs-row',['exports', 'aurelia-framework'],
     }
   })), _class2)) || _class;
 });
+define('components/page-locker/page-locker',["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  var PageLocker = exports.PageLocker = function PageLocker() {
+    _classCallCheck(this, PageLocker);
+  };
+});
 define('text!app.html', ['module'], function(module) { module.exports = "<template><require from=\"jquery-ui-dist/jquery-ui.css\"></require><router-view></router-view></template>"; });
 define('text!styles/utility-styles.css', ['module'], function(module) { module.exports = "/* lg */\r\n@media (min-width: 1200px) {\r\n   .hidden-lg {\r\n     visibility: hidden;\r\n   }\r\n}\r\n\r\n/* md */\r\n@media (min-width: 992px) and (max-width: 1199px) {\r\n   .hidden-md {\r\n     visibility: hidden;\r\n   }\r\n}\r\n\r\n/* sm */\r\n@media (min-width: 768px) and (max-width: 991px) {\r\n   .hidden-sm {\r\n     visibility: hidden;\r\n   }\r\n}\r\n\r\n/* xs */\r\n@media (max-width: 767px) {\r\n   .hidden-xs {\r\n     visibility: hidden;\r\n   }\r\n}"; });
 define('text!components/history-sidebar/history-sidebar.html', ['module'], function(module) { module.exports = "<template><require from=\"./history-sidebar.css\"></require><div no-select class=\"history-container hidden-xs animated fadeIn\"><div class=\"close-history-button\"><i class=\"close-history-button fa fa-times fa-2x\"></i></div><div class=\"history-heading\"><i class=\"fa-sidebar fa fa-history history-icon\"></i><h5 class=\"history-text\">History</h5></div><div class=\"history-lines-container\"><div class=\"history-line\"><span class=\"history-text\"><em>Wins: ${winCount}</em></span></div><div class=\"history-line\"><span class=\"history-text\"><em>Losses: ${lossCount}</em></span></div></div><table class=\"table table-hover history-table\"><thead><th class=\"col-xs-4\">Word</th><th class=\"col-xs-4\">Your time</th><th class=\"col-xs-4\">Opponent's time</th></thead><tbody><tr repeat.for=\"scoreEntry of scoreEntries\"><td>${scoreEntry.word}</td><td class=\"${scoreEntry.didWin ? 'winner-entry' : ''}\">${scoreEntry.playerTimeString}</td><td class=\"${!scoreEntry.didWin ? 'winner-entry' : ''}\">${scoreEntry.opponentTimeString}</td></tr></tbody></table></div></template>"; });
 define('text!components/history-sidebar/history-sidebar.css', ['module'], function(module) { module.exports = ".history-container {\r\n  background:#fbfbfb;\r\n  border-right:1px solid #e5e5e5;\r\n  position:absolute;\r\n  top:0;\r\n  bottom:0;\r\n  height:100%;\r\n  left:0;\r\n  width:60px;\r\n  overflow:hidden;\r\n  z-index:1000;\r\n  cursor: pointer !important;\r\n}\r\n\r\n/*.history-container:hover,*/\r\n.history-container.active {\r\n  width: 500px;\r\n  overflow: visible;\r\n  cursor: default !important;\r\n  overflow-y: auto;\r\n  overflow-x: hidden;\r\n}\r\n\r\n.history-container:not(.active):hover {\r\n  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);\r\n}\r\n\r\n.fa-sidebar {\r\n  position: relative;\r\n  display: table-cell;\r\n  width: 60px;\r\n  height: 36px;\r\n  text-align: center;\r\n  vertical-align: middle;\r\n  font-size:20px;\r\n}\r\n\r\n.history-container:not(.active) .history-heading .history-text {\r\n  left: 60px;\r\n}\r\n\r\n.history-line > .history-text {\r\n  left: 60px;\r\n}\r\n\r\n.history-table {\r\n  display: block;\r\n  left: 60px;\r\n  position: absolute;\r\n  margin-top: 20px;\r\n}\r\n\r\n.history-container .history-heading {\r\n  margin: 7px 0;\r\n  position: relative;\r\n  display: block;\r\n  width: 250px;\r\n    outline:0;\r\n  margin:0;\r\n  padding:0;\r\n}\r\n\r\n.history-lines-container {\r\n  margin: 7px 0;\r\n  position: relative;\r\n  display: block;\r\n  width: 250px;\r\n    outline:0;\r\n  margin:0;\r\n  padding:0;\r\n}\r\n\r\n.history-container .history-text {\r\n  position:relative;\r\n  display:table-cell;\r\n  vertical-align:middle;\r\n  width:190px;\r\n}\r\n\r\n.close-history-button {\r\n  position: absolute;\r\n  padding-right: 10px;\r\n  padding-bottom: 0;\r\n  left: 90%;\r\n  top: 5px;\r\n  display: inline-block;\r\n  cursor: pointer !important;\r\n}\r\n\r\n.close-history-button:hover > i {\r\n  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);\r\n}\r\n\r\n.page-overlay {\r\n  opacity:    0.5; \r\n  background: #000; \r\n  width:      100%;\r\n  height:     100%; \r\n  z-index:    999;\r\n  top:        0; \r\n  left:       0; \r\n  position:   fixed;\r\n}\r\n\r\n.winner-entry {\r\n  font-weight: bold;\r\n  color: gold;\r\n}"; });
-define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><compose if.bind=\"showHistorySidebar\" view-model=\"../../components/history-sidebar/history-sidebar\" model.bind=\"{ }\"></compose><div class=\"container\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row><h4 no-select id=\"score-container\" class=\"${!showCurrentScore ? 'hidden' : ''}\"><span id=\"opponent-wrapper\" if.bind=\"currentOpponent\"><i class=\"fa fa-user\"></i> Opponent: <em>${currentOpponent}</em> </span><span id=\"score-wrapper\"><i class=\"fa fa-star\"></i> ${currentScoreString}</span></h4></bs-row><bs-row if.bind=\"showLoadingBanner\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button take-focus class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row if.bind=\"showGameArea\"><div class=\"animated fadeIn pulse type-area\" if.bind=\"showChallengeArea\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"typedWord\"></div><div class=\"type-area\" if.bind=\"showChallengeWaitArea\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${challengeWaitText}</h3></div></bs-row><bs-row><div id=\"message-banner\" no-select class=\"animated fadeIn ${!showMessageBanner ? 'hidden' : ''}\"><h2 class=\"text-center\"><strong id=\"message-text-container\">${currentMessage}</strong></h2></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"message-banner animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong id=\"victory-text-container\">${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template>"; });
-define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: gold;\r\n}\r\n\r\n.loss-text {\r\n  color: #CD7F32;\r\n}\r\n\r\n#score-container {\r\n  height: 50px;\r\n}\r\n\r\n#message-text-container {\r\n  color: #7D658D;\r\n}\r\n\r\n#score-wrapper {\r\n  color: gold;\r\n  display: block;\r\n  width: 100px;\r\n  float: right;\r\n}\r\n\r\n#opponent-wrapper {\r\n  color: #444444;\r\n  width: 400px;\r\n  float: left;\r\n  display: block;\r\n  text-overflow: ellipsis;\r\n  overflow: hidden;\r\n  white-space: nowrap;\r\n}\r\n\r\n.type-area {\r\n  height: 170px !important;\r\n}\r\n"; });
+define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><compose if.bind=\"isApplicationLocked\" view-model=\"../../components/page-locker/page-locker\" model.bind=\"{ }\"></compose><template if.bind=\"!isApplicationLocked\"><compose if.bind=\"showHistorySidebar\" view-model=\"../../components/history-sidebar/history-sidebar\" model.bind=\"{ }\"></compose><div class=\"container\" if.bind=\"!isApplicationLocked\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row><h4 no-select id=\"score-container\" class=\"${!showCurrentScore ? 'hidden' : ''}\"><span id=\"opponent-wrapper\" if.bind=\"currentOpponent\"><i class=\"fa fa-user\"></i> Opponent: <em>${currentOpponent}</em> </span><span id=\"score-wrapper\"><i class=\"fa fa-star\"></i> ${currentScoreString}</span></h4></bs-row><bs-row if.bind=\"showLoadingBanner\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><h4>Instructions</h4><img class=\"tutorial-image\" src=\"media/image/tutorial.png\"></bs-row><bs-row if.bind=\"showJoinGameForm\"><button take-focus class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row if.bind=\"showGameArea\"><div class=\"animated fadeIn pulse type-area\" if.bind=\"showChallengeArea\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"typedWord\"></div><div class=\"type-area\" if.bind=\"showChallengeWaitArea\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${challengeWaitText}</h3></div></bs-row><bs-row><div id=\"message-banner\" no-select class=\"animated fadeIn ${!showMessageBanner ? 'hidden' : ''}\"><h2 class=\"text-center\"><strong id=\"message-text-container\">${currentMessage}</strong></h2></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"message-banner animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong id=\"victory-text-container\">${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template></template>"; });
+define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: gold;\r\n}\r\n\r\n.loss-text {\r\n  color: #CD7F32;\r\n}\r\n\r\n#score-container {\r\n  height: 50px;\r\n}\r\n\r\n#message-text-container {\r\n  color: #7D658D;\r\n}\r\n\r\n#score-wrapper {\r\n  color: gold;\r\n  display: block;\r\n  width: 100px;\r\n  float: right;\r\n}\r\n\r\n#opponent-wrapper {\r\n  color: #444444;\r\n  width: 400px;\r\n  float: left;\r\n  display: block;\r\n  text-overflow: ellipsis;\r\n  overflow: hidden;\r\n  white-space: nowrap;\r\n}\r\n\r\n.type-area {\r\n  height: 170px !important;\r\n}\r\n\r\n.tutorial-image {\r\n  display: block;\r\n  margin: 0 auto;\r\n  height: 600px;\r\n  margin-bottom: 20px;\r\n}\r\n"; });
 define('text!resources/elements/ui-wrappers/bs-row.html', ['module'], function(module) { module.exports = "<template><div class=\"row\"><div class=\"col-xs-${xs} col-sm-${sm} col-md-${md} col-lg-${lg}\"><slot></slot></div></div></template>"; });
+define('text!components/page-locker/page-locker.css', ['module'], function(module) { module.exports = ""; });
+define('text!components/page-locker/page-locker.html', ['module'], function(module) { module.exports = "<template><require from=\"./page-locker.css\"></require><div class=\"container\"><div class=\"jumbotron\"><h1>Application locked!</h1><p>No connection to remote server. Please <a href=\"\">try again</a> in a few moments.</p></div></div></template>"; });
 //# sourceMappingURL=app-bundle.js.map

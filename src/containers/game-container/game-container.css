@@ -34,3 +34,10 @@
 .type-area {
   height: 170px !important;
 }
+
+.tutorial-image {
+  display: block;
+  margin: 0 auto;
+  height: 600px;
+  margin-bottom: 20px;
+}

@@ -21,6 +21,8 @@ export class GameContainer {
     this.eventAggregator = eventAggregator;
     this.dataAPI = dataAPI;
     this.connectionAPI = connectionAPI;
+
+    this.initStateModel();
   }
 
   attached() {
@@ -49,7 +51,9 @@ export class GameContainer {
 
   /* INITIALIZERS */
   initStateModel() {
-    this.isConnectingToServer = false;
+    /* set to true right away to avoid displaying nickname form */
+    this.isApplicationLocked = false;
+    this.isConnectingToServer = true;
     this.isSettingNickname = false;
     this.isWaitingForOpponent = false;
     this.isWaitingForNextRound = false;
@@ -62,6 +66,7 @@ export class GameContainer {
     this.canJoinGame = false;
     this.canDisplayTutorial = false;
 
+    this.isInGame = false;
     this.lastScoreIndex = null;
     this.currentOpponent = null;
     this.sessionId = null;
@@ -97,12 +102,18 @@ export class GameContainer {
     };
 
     serverSocket.onclose = (event) => {
-      // TODO
+      // lock page
+      this.isApplicationLocked = true;
+    };
+
+    serverSocket.onerror = () => {
+      // lock page
+      this.isApplicationLocked = true;
     };
 
     serverSocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log(data);
+
       switch (data.type) {
       case MessageTypes.CONNECT_RESPONSE:
         this.handleConnectResponse(data);
@@ -156,7 +167,7 @@ export class GameContainer {
     .send()
     .then((response) => {
       const { roundScores } = response.content;
-      console.log(response.content, roundScores);
+
       roundScores.forEach((roundScore) => {
         this.eventAggregator.publish(new eventTypes.NewScore(roundScore));
         this.lastScoreIndex = roundScore.index;
@@ -404,7 +415,7 @@ export class GameContainer {
   }
 
   get showGameArea() {
-    return this.isInGame;
+    return this.isInGame && !this.isConnectingToServer;
   }
 
   get showCurrentScore() {
