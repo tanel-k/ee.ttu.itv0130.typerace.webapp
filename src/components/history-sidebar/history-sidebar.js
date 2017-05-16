@@ -1,20 +1,28 @@
 import { inject } from 'aurelia-framework';
+import { EventAggregator } from 'aurelia-event-aggregator';
 
 import 'jquery';
+import 'jquery-ui-dist';
 
-@inject(Element)
+import * as eventTypes from '../../events/event-types';
+import { formatSeconds } from '../../lib/time-utils';
+
+@inject(Element, EventAggregator)
 export class HistorySidebar {
-  constructor(element) {
+  constructor(element, ea) {
     this.element = element;
+    this.ea = ea;
   }
 
   attached() {
+    this.initStateModel();
     this.initDOMHooks();
     this.attachEventListeners();
   }
 
   initStateModel() {
     this.isActive = false;
+    this.scoreEntries = [];
   }
 
   initDOMHooks() {
@@ -25,6 +33,15 @@ export class HistorySidebar {
   attachEventListeners() {
     this.historyContainer.addEventListener('click', () => {
       this.activateHistoryContainer();
+    });
+
+    this.ea.subscribe(eventTypes.NewScore, event => {
+      this.addScoreEntry(event.scoreData);
+      /*
+      this.animatePriceLabel();
+      this.audioBank.cartClank.cloneNode().play();
+      this.$cartIcon.effect('shake', { times: 2 }, 200);
+      */
     });
 /*
     this.closeButton.addEventListener('click', () => {
@@ -54,4 +71,15 @@ export class HistorySidebar {
       this.isActive = false;
     }
   }
+
+  addScoreEntry({ opponentTimeMillis, playerTimeMillis, word}) {
+    this.scoreEntries.push({
+      word,
+      playerTimeString: formatMillis(playerTimeMillis),
+      opponentTimeString: formatMillis(opponentTimeMillis),
+      didWin: opponentTimeMillis > playerTimeMillis
+    });
+  }
 }
+
+const formatMillis = (millis) => (formatSeconds(millis / 1000));

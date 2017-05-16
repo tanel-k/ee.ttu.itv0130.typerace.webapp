@@ -81,3 +81,8 @@
   left:       0; 
   position:   fixed; 
 }
+
+.winner-entry {
+  font-weight: bold;
+  color: gold;
+}

@@ -23,15 +23,10 @@
         <th class="col-xs-4 col-sm-4 col-md-4">Opponent's time</th>
       </thead>
       <tbody>
-        <tr>
-          <td>soliloquy</td>
-          <td>45s</td>
-          <td>1m 30s</td>
-        </tr>
-        <tr>
-          <td>soliloquy</td>
-          <td>45s</td>
-          <td>1m 30s</td>
+        <tr repeat.for="scoreEntry of scoreEntries">
+          <td>${scoreEntry.word}</td>
+          <td class="${scoreEntry.didWin ? 'winner-entry' : ''}">${scoreEntry.playerTimeString}</td>
+          <td class="${!scoreEntry.didWin ? 'winner-entry' : ''}">${scoreEntry.opponentTimeString}</td>
         </tr>
       </tbody>
     </table>

@@ -1,4 +1,5 @@
 import { inject, bindable } from 'aurelia-framework';
+import { EventAggregator } from 'aurelia-event-aggregator';
 
 import 'jquery';
 import 'jquery-ui-dist';
@@ -7,15 +8,17 @@ import { DataAPI } from '../../gateways/data/data-api';
 import { ConnectionAPI } from '../../gateways/connection/connection-api';
 
 import { isEmpty } from '../../lib/string-utils';
+import * as eventTypes from '../../events/event-types';
 import * as MessageTypes from '../../lib/message-types';
 
-@inject(Element, DataAPI, ConnectionAPI)
+@inject(Element, EventAggregator, DataAPI, ConnectionAPI)
 export class GameContainer {
   @bindable currentNickname = '';
   @bindable word = '';
 
-  constructor(element, dataAPI, connectionAPI) {
+  constructor(element, eventAggregator, dataAPI, connectionAPI) {
     this.element = element;
+    this.eventAggregator = eventAggregator;
     this.dataAPI = dataAPI;
     this.connectionAPI = connectionAPI;
   }
@@ -59,6 +62,7 @@ export class GameContainer {
     this.canJoinGame = false;
     this.canDisplayTutorial = false;
 
+    this.lastScoreIndex = null;
     this.currentOpponent = null;
     this.sessionId = null;
     this.didWin = null;
@@ -76,13 +80,9 @@ export class GameContainer {
     this.getVictoryTextContainer = () => (this.element.querySelector('#victory-text-container'));
   }
 
-  attachDOMListeners() {
+  attachDOMListeners() {}
 
-  }
-
-  detachDOMListeners() {
-
-  }
+  detachDOMListeners() {}
 
   connectToServer() {
     const serverSocket = this.serverSocket = this.connectionAPI.getGameSocketConnection();
@@ -151,6 +151,18 @@ export class GameContainer {
     this.currentOpponent = data.opponentNickname;
     this.isInGame = true;
     this.hasNotSentWord = true;
+
+    this.dataAPI.getScoreRequest(this.sessionId, this.lastScoreIndex || '0')
+    .send()
+    .then((response) => {
+      const { roundScores } = response.content;
+      console.log(response.content, roundScores);
+      roundScores.forEach((roundScore) => {
+        this.eventAggregator.publish(new eventTypes.NewScore(roundScore));
+        this.lastScoreIndex = roundScore.index;
+      });
+    })
+    .catch((err) => {});
   }
 
   handleTypeWordResponse(data) {

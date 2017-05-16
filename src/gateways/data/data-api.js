@@ -10,9 +10,9 @@ export class DataAPI {
     );
   }
 
-  getScoreRequest(sessionId) {
+  getScoreRequest(sessionId, afterIndex = '0') {
     return this.client
-      .createRequest(`/scores/${sessionId}`)
+      .createRequest(`/scores/${sessionId}?afterIndex=${afterIndex}`)
       .asGet();
   }
 }

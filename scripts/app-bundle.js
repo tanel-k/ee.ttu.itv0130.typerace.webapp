@@ -39,7 +39,7 @@ define('environment',['exports'], function (exports) {
   exports.default = {
     debug: true,
     testing: true,
-    gatewayRootURL: 'https://localhost:8081',
+    gatewayRootURL: 'http://localhost:8081',
     socketRootURL: 'ws://localhost:8081'
   };
 });
@@ -81,6 +81,25 @@ define('main',['exports', './environment'], function (exports, _environment) {
     });
   }
 });
+define('events/event-types',["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  var NewScore = exports.NewScore = function NewScore(scoreData) {
+    _classCallCheck(this, NewScore);
+
+    this.scoreData = scoreData;
+  };
+});
 define('lib/message-types',['exports'], function (exports) {
   'use strict';
 
@@ -111,6 +130,40 @@ define('lib/string-utils',["exports"], function (exports) {
     return !val || !val.trim();
   }
 });
+define('lib/time-utils',['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  var formatSeconds = exports.formatSeconds = function formatSeconds(seconds) {
+    var secondsLeft = parseInt(seconds, 10);
+    var hours = parseInt(seconds / 3600, 10);
+    secondsLeft = secondsLeft % 3600;
+    var minutes = parseInt(secondsLeft / 60, 10);
+    secondsLeft = secondsLeft % 60;
+
+    var hourString = formatTimePart(hours, 'hour', ' ');
+    var minuteString = formatTimePart(minutes, 'minute', ' ');
+    var secondString = formatTimePart(secondsLeft, 'second', ' ');
+
+    return hourString + minuteString + secondString;
+  };
+
+  var formatTimePart = exports.formatTimePart = function formatTimePart(part, unit) {
+    var pad = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '';
+
+    if (!part) {
+      return '';
+    }
+
+    if (part > 1) {
+      return '' + pad + part + ' ' + unit + 's' + pad;
+    }
+
+    return '' + pad + part + ' ' + unit + pad;
+  };
+});
 define('resources/index',['exports'], function (exports) {
   'use strict';
 
@@ -122,13 +175,133 @@ define('resources/index',['exports'], function (exports) {
     config.globalResources(['./attributes/key-return', './attributes/take-focus', './attributes/no-select', './elements/ui-wrappers/bs-row']);
   }
 });
-define('containers/game-container/game-container',['exports', 'aurelia-framework', '../../gateways/data/data-api', '../../gateways/connection/connection-api', '../../lib/string-utils', '../../lib/message-types', 'jquery', 'jquery-ui-dist'], function (exports, _aureliaFramework, _dataApi, _connectionApi, _stringUtils, _messageTypes) {
+define('components/history-sidebar/history-sidebar',['exports', 'aurelia-framework', 'aurelia-event-aggregator', '../../events/event-types', '../../lib/time-utils', 'jquery', 'jquery-ui-dist'], function (exports, _aureliaFramework, _aureliaEventAggregator, _eventTypes, _timeUtils) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.HistorySidebar = undefined;
+
+  var eventTypes = _interopRequireWildcard(_eventTypes);
+
+  function _interopRequireWildcard(obj) {
+    if (obj && obj.__esModule) {
+      return obj;
+    } else {
+      var newObj = {};
+
+      if (obj != null) {
+        for (var key in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key];
+        }
+      }
+
+      newObj.default = obj;
+      return newObj;
+    }
+  }
+
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  var _dec, _class;
+
+  var HistorySidebar = exports.HistorySidebar = (_dec = (0, _aureliaFramework.inject)(Element, _aureliaEventAggregator.EventAggregator), _dec(_class = function () {
+    function HistorySidebar(element, ea) {
+      _classCallCheck(this, HistorySidebar);
+
+      this.element = element;
+      this.ea = ea;
+    }
+
+    HistorySidebar.prototype.attached = function attached() {
+      this.initStateModel();
+      this.initDOMHooks();
+      this.attachEventListeners();
+    };
+
+    HistorySidebar.prototype.initStateModel = function initStateModel() {
+      this.isActive = false;
+      this.scoreEntries = [];
+    };
+
+    HistorySidebar.prototype.initDOMHooks = function initDOMHooks() {
+      this.historyContainer = this.element.querySelector('.history-container');
+      this.closeButton = this.element.querySelector('.close-button');
+    };
+
+    HistorySidebar.prototype.attachEventListeners = function attachEventListeners() {
+      var _this = this;
+
+      this.historyContainer.addEventListener('click', function () {
+        _this.activateHistoryContainer();
+      });
+
+      this.ea.subscribe(eventTypes.NewScore, function (event) {
+        _this.addScoreEntry(event.scoreData);
+      });
+    };
+
+    HistorySidebar.prototype.activateHistoryContainer = function activateHistoryContainer() {
+      var _this2 = this;
+
+      if (!this.isActive) {
+        this.historyContainer.classList.add('active');
+        var overlayDiv = document.createElement('div');
+        overlayDiv.classList.add('page-overlay');
+        document.body.appendChild(overlayDiv);
+        overlayDiv.addEventListener('click', function () {
+          return _this2.deactivateHistoryContainer();
+        });
+        this.isActive = true;
+      }
+    };
+
+    HistorySidebar.prototype.deactivateHistoryContainer = function deactivateHistoryContainer() {
+      if (this.isActive) {
+        this.historyContainer.classList.remove('active');
+        var overlayDiv = document.querySelector('.page-overlay');
+        if (overlayDiv) {
+          document.body.removeChild(overlayDiv);
+        }
+        this.isActive = false;
+      }
+    };
+
+    HistorySidebar.prototype.addScoreEntry = function addScoreEntry(_ref) {
+      var opponentTimeMillis = _ref.opponentTimeMillis,
+          playerTimeMillis = _ref.playerTimeMillis,
+          word = _ref.word;
+
+      this.scoreEntries.push({
+        word: word,
+        playerTimeString: formatMillis(playerTimeMillis),
+        opponentTimeString: formatMillis(opponentTimeMillis),
+        didWin: opponentTimeMillis > playerTimeMillis
+      });
+    };
+
+    return HistorySidebar;
+  }()) || _class);
+
+
+  var formatMillis = function formatMillis(millis) {
+    return (0, _timeUtils.formatSeconds)(millis / 1000);
+  };
+});
+define('containers/game-container/game-container',['exports', 'aurelia-framework', 'aurelia-event-aggregator', '../../gateways/data/data-api', '../../gateways/connection/connection-api', '../../lib/string-utils', '../../events/event-types', '../../lib/message-types', 'jquery', 'jquery-ui-dist'], function (exports, _aureliaFramework, _aureliaEventAggregator, _dataApi, _connectionApi, _stringUtils, _eventTypes, _messageTypes) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
   exports.GameContainer = undefined;
+
+  var eventTypes = _interopRequireWildcard(_eventTypes);
 
   var MessageTypes = _interopRequireWildcard(_messageTypes);
 
@@ -232,8 +405,8 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
 
   var _dec, _class, _desc, _value, _class2, _descriptor, _descriptor2;
 
-  var GameContainer = exports.GameContainer = (_dec = (0, _aureliaFramework.inject)(Element, _dataApi.DataAPI, _connectionApi.ConnectionAPI), _dec(_class = (_class2 = function () {
-    function GameContainer(element, dataAPI, connectionAPI) {
+  var GameContainer = exports.GameContainer = (_dec = (0, _aureliaFramework.inject)(Element, _aureliaEventAggregator.EventAggregator, _dataApi.DataAPI, _connectionApi.ConnectionAPI), _dec(_class = (_class2 = function () {
+    function GameContainer(element, eventAggregator, dataAPI, connectionAPI) {
       _classCallCheck(this, GameContainer);
 
       _initDefineProp(this, 'currentNickname', _descriptor, this);
@@ -241,6 +414,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       _initDefineProp(this, 'word', _descriptor2, this);
 
       this.element = element;
+      this.eventAggregator = eventAggregator;
       this.dataAPI = dataAPI;
       this.connectionAPI = connectionAPI;
     }
@@ -283,6 +457,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.canJoinGame = false;
       this.canDisplayTutorial = false;
 
+      this.lastScoreIndex = null;
       this.currentOpponent = null;
       this.sessionId = null;
       this.didWin = null;
@@ -369,6 +544,8 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.handleBroadcastWord = function handleBroadcastWord(data) {
+      var _this3 = this;
+
       playAudio(this.audioBank.opponentFound);
 
       this.hasJoinedGameAtLeastOnce = true;
@@ -379,6 +556,16 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.currentOpponent = data.opponentNickname;
       this.isInGame = true;
       this.hasNotSentWord = true;
+
+      this.dataAPI.getScoreRequest(this.sessionId, this.lastScoreIndex || '0').send().then(function (response) {
+        var roundScores = response.content.roundScores;
+
+        console.log(response.content, roundScores);
+        roundScores.forEach(function (roundScore) {
+          _this3.eventAggregator.publish(new eventTypes.NewScore(roundScore));
+          _this3.lastScoreIndex = roundScore.index;
+        });
+      }).catch(function (err) {});
     };
 
     GameContainer.prototype.handleTypeWordResponse = function handleTypeWordResponse(data) {
@@ -416,7 +603,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.handleTerminateGame = function handleTerminateGame(data) {
-      var _this3 = this;
+      var _this4 = this;
 
       playAudio(this.audioBank.opponentLeft);
       this.isInGame = false;
@@ -424,12 +611,12 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.currentOpponent = null;
       this.flashMessage('Your opponent left!', 2000);
       setTimeout(function () {
-        return _this3.canJoinGame = true;
+        return _this4.canJoinGame = true;
       }, 2000);
     };
 
     GameContainer.prototype.handleRoundEnd = function handleRoundEnd(data, victory) {
-      var _this4 = this;
+      var _this5 = this;
 
       if (victory) {
         playAudio(this.audioBank.victoryDing);
@@ -448,21 +635,21 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       victoryBanner.classList.remove('fadeOut');
 
       setTimeout(function () {
-        return _this4.transferPoints(data.playerScore, victory);
+        return _this5.transferPoints(data.playerScore, victory);
       }, 500);
 
       setTimeout(function () {
         victoryBanner.classList.add('fadeOut');
         setTimeout(function () {
-          _this4.showWinStatus = false;
-          _this4.isWaitingForNextRound = true;
-          _this4.didWin = null;
+          _this5.showWinStatus = false;
+          _this5.isWaitingForNextRound = true;
+          _this5.didWin = null;
         }, 500);
       }, 1000);
     };
 
     GameContainer.prototype.transferPoints = function transferPoints(points, victory) {
-      var _this5 = this;
+      var _this6 = this;
 
       var scoreWrapper = this.getScoreWrapper();
       var victoryTextContainer = this.getVictoryTextContainer();
@@ -507,14 +694,14 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
           'left': endLeftOffset
         }, 500, 'easeInOutExpo', function () {
           if (victory) {
-            playAudio(_this5.audioBank.winnerPointDing);
+            playAudio(_this6.audioBank.winnerPointDing);
           } else {
-            playAudio(_this5.audioBank.loserPointDing);
+            playAudio(_this6.audioBank.loserPointDing);
           }
 
           $scoreWrapper.effect('bounce', { times: victory ? 2 : 1 }, 100);
           $starIcon.remove();
-          _this5.currentScore += amount;
+          _this6.currentScore += amount;
           var $pointsDiv = $(pointsDiv.cloneNode());
           $pointsDiv.text('+' + amount).css(Object.assign({
             opacity: '0.5',
@@ -600,7 +787,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.flashMessage = function flashMessage(message) {
-      var _this6 = this;
+      var _this7 = this;
 
       var durationMillis = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1000;
 
@@ -611,8 +798,8 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       messageBanner.classList.remove('fadeOut');
       this.messageBannerHideTimeout = setTimeout(function () {
         messageBanner.classList.add('fadeOut');
-        _this6.messageBannerHideTimeout = setTimeout(function () {
-          _this6.showMessageBanner = false;
+        _this7.messageBannerHideTimeout = setTimeout(function () {
+          _this7.showMessageBanner = false;
         }, parseInt(durationMillis * 0.5, 10));
       }, parseInt(durationMillis * 0.5, 10));
     };
@@ -779,7 +966,9 @@ define('gateways/data/data-api',['exports', 'aurelia-framework', 'aurelia-http-c
     }
 
     DataAPI.prototype.getScoreRequest = function getScoreRequest(sessionId) {
-      return this.client.createRequest('/scores/' + sessionId).asGet();
+      var afterIndex = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '0';
+
+      return this.client.createRequest('/scores/' + sessionId + '?afterIndex=' + afterIndex).asGet();
     };
 
     return DataAPI;
@@ -998,85 +1187,11 @@ define('resources/elements/ui-wrappers/bs-row',['exports', 'aurelia-framework'],
     }
   })), _class2)) || _class;
 });
-define('components/history-sidebar/history-sidebar',['exports', 'aurelia-framework', 'jquery'], function (exports, _aureliaFramework) {
-  'use strict';
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  exports.HistorySidebar = undefined;
-
-  function _classCallCheck(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  var _dec, _class;
-
-  var HistorySidebar = exports.HistorySidebar = (_dec = (0, _aureliaFramework.inject)(Element), _dec(_class = function () {
-    function HistorySidebar(element) {
-      _classCallCheck(this, HistorySidebar);
-
-      this.element = element;
-    }
-
-    HistorySidebar.prototype.attached = function attached() {
-      this.initDOMHooks();
-      this.attachEventListeners();
-    };
-
-    HistorySidebar.prototype.initStateModel = function initStateModel() {
-      this.isActive = false;
-    };
-
-    HistorySidebar.prototype.initDOMHooks = function initDOMHooks() {
-      this.historyContainer = this.element.querySelector('.history-container');
-      this.closeButton = this.element.querySelector('.close-button');
-    };
-
-    HistorySidebar.prototype.attachEventListeners = function attachEventListeners() {
-      var _this = this;
-
-      this.historyContainer.addEventListener('click', function () {
-        _this.activateHistoryContainer();
-      });
-    };
-
-    HistorySidebar.prototype.activateHistoryContainer = function activateHistoryContainer() {
-      var _this2 = this;
-
-      if (!this.isActive) {
-        this.historyContainer.classList.add('active');
-        var overlayDiv = document.createElement('div');
-        overlayDiv.classList.add('page-overlay');
-        document.body.appendChild(overlayDiv);
-        overlayDiv.addEventListener('click', function () {
-          return _this2.deactivateHistoryContainer();
-        });
-        this.isActive = true;
-      }
-    };
-
-    HistorySidebar.prototype.deactivateHistoryContainer = function deactivateHistoryContainer() {
-      if (this.isActive) {
-        this.historyContainer.classList.remove('active');
-        var overlayDiv = document.querySelector('.page-overlay');
-        if (overlayDiv) {
-          document.body.removeChild(overlayDiv);
-        }
-        this.isActive = false;
-      }
-    };
-
-    return HistorySidebar;
-  }()) || _class);
-});
 define('text!app.html', ['module'], function(module) { module.exports = "<template><require from=\"jquery-ui-dist/jquery-ui.css\"></require><router-view></router-view></template>"; });
 define('text!styles/utility-styles.css', ['module'], function(module) { module.exports = "/* lg */\r\n@media (min-width: 1200px) {\r\n   .hidden-lg {\r\n     visibility: hidden;\r\n   }\r\n}\r\n\r\n/* md */\r\n@media (min-width: 992px) and (max-width: 1199px) {\r\n   .hidden-md {\r\n     visibility: hidden;\r\n   }\r\n}\r\n\r\n/* sm */\r\n@media (min-width: 768px) and (max-width: 991px) {\r\n   .hidden-sm {\r\n     visibility: hidden;\r\n   }\r\n}\r\n\r\n/* xs */\r\n@media (max-width: 767px) {\r\n   .hidden-xs {\r\n     visibility: hidden;\r\n   }\r\n}"; });
+define('text!components/history-sidebar/history-sidebar.html', ['module'], function(module) { module.exports = "<template><require from=\"./history-sidebar.css\"></require><div no-select class=\"history-container inactive hidden-xs animated fadeIn\"><div class=\"history-heading\"><i class=\"fa-sidebar fa fa-history\"></i><h5 class=\"history-text\">History</h5></div><table class=\"table table-hover history-table\"><thead><th class=\"col-xs-4 col-sm-4 col-md-4\">Word</th><th class=\"col-xs-4 col-sm-4 col-md-4\">Your time</th><th class=\"col-xs-4 col-sm-4 col-md-4\">Opponent's time</th></thead><tbody><tr repeat.for=\"scoreEntry of scoreEntries\"><td>${scoreEntry.word}</td><td class=\"${scoreEntry.didWin ? 'winner-entry' : ''}\">${scoreEntry.playerTimeString}</td><td class=\"${!scoreEntry.didWin ? 'winner-entry' : ''}\">${scoreEntry.opponentTimeString}</td></tr></tbody></table></div></template>"; });
+define('text!components/history-sidebar/history-sidebar.css', ['module'], function(module) { module.exports = ".history-container {\r\n  background:#fbfbfb;\r\n  border-right:1px solid #e5e5e5;\r\n  position:absolute;\r\n  top:0;\r\n  bottom:0;\r\n  height:100%;\r\n  left:0;\r\n  width:60px;\r\n  overflow:hidden;\r\n  z-index:1000;\r\n  cursor: pointer !important;\r\n}\r\n\r\n/*.history-container:hover,*/\r\n.history-container.active {\r\n  width: 500px;\r\n  overflow: visible;\r\n  cursor: default !important;\r\n}\r\n\r\n.history-container:not(.active):hover {\r\n  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);\r\n}\r\n\r\n.fa-sidebar {\r\n  position: relative;\r\n  display: table-cell;\r\n  width: 60px;\r\n  height: 36px;\r\n  text-align: center;\r\n  vertical-align: middle;\r\n  font-size:20px;\r\n}\r\n\r\n.history-line > .history-text {\r\n  left: 60px;\r\n}\r\n\r\n.history-table {\r\n  display: block;\r\n  left: 60px;\r\n  position: absolute;\r\n  margin-top: 20px;\r\n}\r\n\r\n.history-container .history-heading {\r\n  margin: 7px 0;\r\n  position: relative;\r\n  display: block;\r\n  width: 250px;\r\n    outline:0;\r\n  margin:0;\r\n  padding:0;\r\n}\r\n\r\n.history-lines-container {\r\n  margin: 7px 0;\r\n  position: relative;\r\n  display: block;\r\n  width: 250px;\r\n    outline:0;\r\n  margin:0;\r\n  padding:0;\r\n}\r\n\r\n.history-container .history-text {\r\n  position:relative;\r\n  display:table-cell;\r\n  vertical-align:middle;\r\n  width:190px;\r\n}\r\n\r\n.page-overlay {\r\n  opacity:    0.5; \r\n  background: #000; \r\n  width:      100%;\r\n  height:     100%; \r\n  z-index:    999;\r\n  top:        0; \r\n  left:       0; \r\n  position:   fixed; \r\n}\r\n\r\n.winner-entry {\r\n  font-weight: bold;\r\n  color: gold;\r\n}"; });
 define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><compose view-model=\"../../components/history-sidebar/history-sidebar\" model.bind=\"{ }\"></compose><div class=\"container\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row><h4></h4><h4 no-select id=\"score-container\" class=\"${!showCurrentScore ? 'hidden' : ''}\"><span id=\"opponent-wrapper\" if.bind=\"currentOpponent\"><i class=\"fa fa-user\"></i> Opponent: <em>${currentOpponent}</em> </span><span id=\"score-wrapper\"><i class=\"fa fa-star\"></i> ${currentScoreString}</span></h4></bs-row><bs-row if.bind=\"showLoadingBanner\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button take-focus class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row if.bind=\"showGameArea\"><div class=\"animated fadeIn pulse type-area\" if.bind=\"showChallengeArea\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"typedWord\"></div><div class=\"type-area\" if.bind=\"showChallengeWaitArea\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${challengeWaitText}</h3></div></bs-row><bs-row><div id=\"message-banner\" no-select class=\"animated fadeIn ${!showMessageBanner ? 'hidden' : ''}\"><h2 class=\"text-center\"><strong id=\"message-text-container\">${currentMessage}</strong></h2></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"message-banner animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong id=\"victory-text-container\">${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template>"; });
 define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: gold;\r\n}\r\n\r\n.loss-text {\r\n  color: #CD7F32;\r\n}\r\n\r\n#score-container {\r\n  height: 50px;\r\n}\r\n\r\n#message-text-container {\r\n  color: #7D658D;\r\n}\r\n\r\n#score-wrapper {\r\n  color: gold;\r\n  display: block;\r\n  width: 100px;\r\n  float: right;\r\n}\r\n\r\n#opponent-wrapper {\r\n  color: #444444;\r\n  width: 400px;\r\n  float: left;\r\n  display: block;\r\n  text-overflow: ellipsis;\r\n  overflow: hidden;\r\n  white-space: nowrap;\r\n}\r\n\r\n.type-area {\r\n  height: 170px !important;\r\n}\r\n"; });
 define('text!resources/elements/ui-wrappers/bs-row.html', ['module'], function(module) { module.exports = "<template><div class=\"row\"><div class=\"col-xs-${xs} col-sm-${sm} col-md-${md} col-lg-${lg}\"><slot></slot></div></div></template>"; });
-define('text!components/history-sidebar/history-sidebar.html', ['module'], function(module) { module.exports = "<template><require from=\"./history-sidebar.css\"></require><div no-select class=\"history-container inactive hidden-xs animated fadeIn\"><div class=\"history-heading\"><i class=\"fa-sidebar fa fa-history\"></i><h5 class=\"history-text\">History</h5></div><table class=\"table table-hover history-table\"><thead><th class=\"col-xs-4 col-sm-4 col-md-4\">Word</th><th class=\"col-xs-4 col-sm-4 col-md-4\">Your time</th><th class=\"col-xs-4 col-sm-4 col-md-4\">Opponent's time</th></thead><tbody><tr><td>soliloquy</td><td>45s</td><td>1m 30s</td></tr><tr><td>soliloquy</td><td>45s</td><td>1m 30s</td></tr></tbody></table></div></template>"; });
-define('text!components/history-sidebar/history-sidebar.css', ['module'], function(module) { module.exports = ".history-container {\r\n  background:#fbfbfb;\r\n  border-right:1px solid #e5e5e5;\r\n  position:absolute;\r\n  top:0;\r\n  bottom:0;\r\n  height:100%;\r\n  left:0;\r\n  width:60px;\r\n  overflow:hidden;\r\n  z-index:1000;\r\n  cursor: pointer !important;\r\n}\r\n\r\n/*.history-container:hover,*/\r\n.history-container.active {\r\n  width: 500px;\r\n  overflow: visible;\r\n  cursor: default !important;\r\n}\r\n\r\n.history-container:not(.active):hover {\r\n  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);\r\n}\r\n\r\n.fa-sidebar {\r\n  position: relative;\r\n  display: table-cell;\r\n  width: 60px;\r\n  height: 36px;\r\n  text-align: center;\r\n  vertical-align: middle;\r\n  font-size:20px;\r\n}\r\n\r\n.history-line > .history-text {\r\n  left: 60px;\r\n}\r\n\r\n.history-table {\r\n  display: block;\r\n  left: 60px;\r\n  position: absolute;\r\n  margin-top: 20px;\r\n}\r\n\r\n.history-container .history-heading {\r\n  margin: 7px 0;\r\n  position: relative;\r\n  display: block;\r\n  width: 250px;\r\n    outline:0;\r\n  margin:0;\r\n  padding:0;\r\n}\r\n\r\n.history-lines-container {\r\n  margin: 7px 0;\r\n  position: relative;\r\n  display: block;\r\n  width: 250px;\r\n    outline:0;\r\n  margin:0;\r\n  padding:0;\r\n}\r\n\r\n.history-container .history-text {\r\n  position:relative;\r\n  display:table-cell;\r\n  vertical-align:middle;\r\n  width:190px;\r\n}\r\n\r\n.page-overlay {\r\n  opacity:    0.5; \r\n  background: #000; \r\n  width:      100%;\r\n  height:     100%; \r\n  z-index:    999;\r\n  top:        0; \r\n  left:       0; \r\n  position:   fixed; \r\n}\r\n"; });
 //# sourceMappingURL=app-bundle.js.map
