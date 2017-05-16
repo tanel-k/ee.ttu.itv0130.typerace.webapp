@@ -53,6 +53,7 @@ export class GameContainer {
 
     this.isInRound = true;
     this.showWinStatus = false;
+    this.showMessageBanner = false;
     this.canJoinGame = false;
     this.canDisplayTutorial = false;
 
@@ -60,12 +61,14 @@ export class GameContainer {
     this.didWin = null;
     this.isNicknameSet = false;
     this.loadingText = null;
+    this.currentMessage = null;
     this.challengeWaitText = null;
     this.currentScore = 0;
   }
 
   initDOMHooks() {
     this.getVictoryBanner = () => (this.element.querySelector('#victory-banner'));
+    this.getMessageBanner = () => (this.element.querySelector('#message-banner'));
     this.getScoreWrapper = () => (this.element.querySelector('#score-wrapper'));
     this.getVictoryTextContainer = () => (this.element.querySelector('#victory-text-container'));
   }
@@ -164,11 +167,27 @@ export class GameContainer {
   }
 
   handleWordMismatch() {
+    if (this.messageBannerHideTimeout) {
+      clearTimeout(this.messageBannerHideTimeout);
+    }
+
     playAudio(this.audioBank.wordMismatch);
+    this.showMessageBanner = true;
+    this.currentMessage = 'Try again!';
+
+    const messageBanner = this.getMessageBanner();
+    messageBanner.classList.remove('fadeOut');
+    this.messageBannerHideTimeout = setTimeout(() => {
+      messageBanner.classList.add('fadeOut');
+      this.messageBannerHideTimeout = setTimeout(() => {
+        this.showMessageBanner = false;
+      }, 500);
+    }, 500);
   }
 
   handleRoundWon(data) {
     playAudio(this.audioBank.victoryDing);
+    this.showMessageBanner = false;
     this.isInRound = false;
     this.showWinStatus = true;
     this.challengeWaitText = 'Waiting for opponent to finish...';
@@ -192,6 +211,7 @@ export class GameContainer {
 
   handleRoundLost(data) {
     playAudio(this.audioBank.lossDing);
+    this.showMessageBanner = false;
     this.isInRound = false;
     this.showWinStatus = true;
     this.challengeWaitText = 'Waiting for next challenge...';
@@ -299,6 +319,8 @@ export class GameContainer {
   handleWordSubmit() {
     if (this.canSubmitWord) {
       this.sendWord();
+    } else {
+      this.handleWordMismatch();
     }
   }
   /* /USER INTERACTION HANDLERS */

@@ -10,7 +10,7 @@
     </div>
   
     <bs-row if.bind="showLoadingBanner">
-      <h3 no-select><i class="fa fa-circle-o-notch fa-spin"></i> ${loadingText}</h3>
+      <h3 no-select class="text-center"><i class="fa fa-circle-o-notch fa-spin"></i> ${loadingText}</h3>
     </bs-row>
   
     <bs-row if.bind="showNicknameForm">
@@ -36,6 +36,7 @@
   
     <bs-row if.bind="showJoinGameForm">
       <button
+        take-focus
         class="btn btn-success btn-block"
         click.trigger="handleJoinGameClick()">${showTutorial ? 'Got it!' : 'Join game'}</button>
     </bs-row>
@@ -70,7 +71,15 @@
     </bs-row>
 
     <bs-row>
-      <div id="victory-banner" no-select class="animated fadeIn ${!showWinStatus ? 'hidden' : ''}">
+      <div id="message-banner" no-select class="animated fadeIn ${!showMessageBanner ? 'hidden' : ''}">
+        <h2 class="text-center">
+          <strong id="message-text-container">${currentMessage}</strong>
+        </h2>
+      </div>
+    </bs-row>
+
+    <bs-row>
+      <div id="victory-banner" no-select class="message-banner animated fadeIn ${!showWinStatus ? 'hidden' : ''}">
         <h2 class="text-center ${didWin ? 'victory-text' : 'loss-text'}">
           <strong id="victory-text-container">${didWin ? 'You won!' : 'You lost!'}</strong>
         </h2>
