@@ -37,7 +37,8 @@ export class GameContainer {
       wordMismatch: new Audio('media/audio/word-mismatch.ogg'),
       joinGame: new Audio('media/audio/join-game.ogg'),
       opponentFound: new Audio('media/audio/opponent-found.ogg'),
-      opponentLeft: new Audio('media/audio/opponent-left.ogg')
+      opponentLeft: new Audio('media/audio/opponent-left.ogg'),
+      taunt: new Audio('media/audio/nelson-taunt.mp3')
     };
 
     this.initStateModel();
@@ -69,6 +70,7 @@ export class GameContainer {
     this.showMessageBanner = false;
     this.canJoinGame = false;
     this.canDisplayTutorial = false;
+    this.canTauntOpponent = false;
 
     this.pingInterval = null;
     this.isInGame = false;
@@ -139,6 +141,9 @@ export class GameContainer {
         break;
       case MessageTypes.TERMINATE_GAME:
         this.handleTerminateGame(data);
+        break;
+      case MessageTypes.FORWARD_TAUNT:
+        this.handleForwardTaunt();
         break;
       default:
         break;
@@ -251,6 +256,7 @@ export class GameContainer {
   handleRoundEnd(data, victory) {
     if (victory) {
       playAudio(this.audioBank.victoryDing);
+      this.canTauntOpponent = true;
     } else {
       playAudio(this.audioBank.lossDing);
     }
@@ -373,6 +379,11 @@ export class GameContainer {
       setTimeout(() => moveStar(color, amount), 150 * i++);
     }
   }
+
+  handleForwardTaunt() {
+    playAudio(this.audioBank.taunt);
+    this.flashMessage(`${this.currentOpponent} taunts you!`, 1000);
+  }
   /* /SERVER MESSAGE HANDLERS */
 
   /* USER INTERACTION HANDLERS */
@@ -395,6 +406,14 @@ export class GameContainer {
       } else {
         this.handleWordMismatch();
       }
+    }
+  }
+
+  handleTauntOpponentClick() {
+    if (this.canTauntOpponent) {
+      playAudio(this.audioBank.taunt);
+      this.sendToServer({ type: MessageTypes.SEND_TAUNT });
+      this.canTauntOpponent = false;
     }
   }
   /* /USER INTERACTION HANDLERS */

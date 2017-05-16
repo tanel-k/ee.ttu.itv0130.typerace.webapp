@@ -80,6 +80,9 @@
 
         <div class="type-area" if.bind="showChallengeWaitArea">
           <h3 no-select class="text-center"><i class="fa fa-circle-o-notch fa-spin"></i> ${challengeWaitText}</h3>
+          <h6 class="text-center" if.bind="canTauntOpponent">
+            <a href="#" class="taunt-btn" click.delegate="handleTauntOpponentClick()">Taunt opponent</a>
+          </h6>
         </div>
       </bs-row>
 

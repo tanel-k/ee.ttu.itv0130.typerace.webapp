@@ -5,6 +5,7 @@ export const SET_NICKNAME_RESPONSE = 'SET_NICKNAME_RESPONSE';
 export const BROADCAST_WORD = 'BROADCAST_WORD';
 export const TYPE_WORD_RESPONSE = 'TYPE_WORD_RESPONSE';
 export const TERMINATE_GAME = 'TERMINATE_GAME';
+export const FORWARD_TAUNT = 'FORWARD_TAUNT';
 /* game events */
 export const WORD_MISMATCH = 'WORD_MISMATCH';
 export const ROUND_WON = 'ROUND_WON';
@@ -14,3 +15,5 @@ export const ROUND_LOST = 'ROUND_LOST';
 export const SET_NICKNAME = 'SET_NICKNAME';
 export const JOIN_GAME = 'JOIN_GAME';
 export const TYPE_WORD = 'TYPE_WORD';
+export const SEND_TAUNT = 'SEND_TAUNT';
+export const PING = 'PING';
