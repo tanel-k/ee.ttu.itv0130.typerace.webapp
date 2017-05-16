@@ -48,8 +48,10 @@ export class GameContainer {
     this.isConnectingToServer = false;
     this.isSettingNickname = false;
     this.isWaitingForOpponent = false;
+    this.isWaitingForNextRound = false;
     this.isCheckingWord = false;
 
+    this.isInRound = true;
     this.showWinStatus = false;
     this.canJoinGame = false;
     this.canDisplayTutorial = false;
@@ -58,6 +60,7 @@ export class GameContainer {
     this.didWin = null;
     this.isNicknameSet = false;
     this.loadingText = null;
+    this.challengeWaitText = null;
     this.currentScore = 0;
   }
 
@@ -135,6 +138,8 @@ export class GameContainer {
     playAudio(this.audioBank.opponentFound);
 
     this.isWaitingForOpponent = false;
+    this.isWaitingForNextRound = false;
+    this.isInRound = true;
     this.currentWord = data.word;
     this.currentOpponent = data.opponentNickname;
     this.isInGame = true;
@@ -164,7 +169,9 @@ export class GameContainer {
 
   handleRoundWon(data) {
     playAudio(this.audioBank.victoryDing);
+    this.isInRound = false;
     this.showWinStatus = true;
+    this.challengeWaitText = 'Waiting for opponent to finish...';
     this.didWin = true;
     this.typedWord = '';
 
@@ -177,6 +184,7 @@ export class GameContainer {
       victoryBanner.classList.add('fadeOut');
       setTimeout(() => {
         this.showWinStatus = false;
+        this.isWaitingForNextRound = true;
         this.didWin = null;
       }, 500);
     }, 1000);
@@ -184,7 +192,9 @@ export class GameContainer {
 
   handleRoundLost(data) {
     playAudio(this.audioBank.lossDing);
+    this.isInRound = false;
     this.showWinStatus = true;
+    this.challengeWaitText = 'Waiting for next challenge...';
     this.didWin = false;
     this.typedWord = '';
 
@@ -197,6 +207,7 @@ export class GameContainer {
       victoryBanner.classList.add('fadeOut');
       setTimeout(() => {
         this.showWinStatus = false;
+        this.isWaitingForNextRound = true;
         this.didWin = null;
       }, 500);
     }, 1000);
@@ -345,11 +356,19 @@ export class GameContainer {
   get showCurrentScore() {
     return this.isInGame;
   }
+
+  get showChallengeArea() {
+    return this.isInRound && !this.isWaitingForNextRound;
+  }
+
+  get showChallengeWaitArea() {
+    return !this.isInRound && this.isWaitingForNextRound;
+  }
   /* /VISIBLITY LOGIC */
 
   /* DISPLAY FORMAT LOGIC */
   get currentScoreString() {
-    return ('000' + this.currentScore).slice(-4);
+    return ('0000' + this.currentScore).slice(-5);
   }
   /* /DISPLAY FORMAT LOGIC */
 

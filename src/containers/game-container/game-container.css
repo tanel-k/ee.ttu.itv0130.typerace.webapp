@@ -7,11 +7,14 @@
 }
 
 #score-container {
-  height: 40px;
+  height: 50px;
 }
 
 #score-wrapper {
   color: gold;
+  display: block;
+  width: 100px;
+  float: right;
 }
 
 .type-area {

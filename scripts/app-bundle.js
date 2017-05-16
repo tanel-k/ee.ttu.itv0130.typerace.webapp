@@ -272,8 +272,10 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.isConnectingToServer = false;
       this.isSettingNickname = false;
       this.isWaitingForOpponent = false;
+      this.isWaitingForNextRound = false;
       this.isCheckingWord = false;
 
+      this.isInRound = true;
       this.showWinStatus = false;
       this.canJoinGame = false;
       this.canDisplayTutorial = false;
@@ -282,6 +284,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.didWin = null;
       this.isNicknameSet = false;
       this.loadingText = null;
+      this.challengeWaitText = null;
       this.currentScore = 0;
     };
 
@@ -361,6 +364,8 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       playAudio(this.audioBank.opponentFound);
 
       this.isWaitingForOpponent = false;
+      this.isWaitingForNextRound = false;
+      this.isInRound = true;
       this.currentWord = data.word;
       this.currentOpponent = data.opponentNickname;
       this.isInGame = true;
@@ -392,7 +397,9 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       var _this3 = this;
 
       playAudio(this.audioBank.victoryDing);
+      this.isInRound = false;
       this.showWinStatus = true;
+      this.challengeWaitText = 'Waiting for opponent to finish...';
       this.didWin = true;
       this.typedWord = '';
 
@@ -407,6 +414,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
         victoryBanner.classList.add('fadeOut');
         setTimeout(function () {
           _this3.showWinStatus = false;
+          _this3.isWaitingForNextRound = true;
           _this3.didWin = null;
         }, 500);
       }, 1000);
@@ -416,7 +424,9 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       var _this4 = this;
 
       playAudio(this.audioBank.lossDing);
+      this.isInRound = false;
       this.showWinStatus = true;
+      this.challengeWaitText = 'Waiting for next challenge...';
       this.didWin = false;
       this.typedWord = '';
 
@@ -431,6 +441,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
         victoryBanner.classList.add('fadeOut');
         setTimeout(function () {
           _this4.showWinStatus = false;
+          _this4.isWaitingForNextRound = true;
           _this4.didWin = null;
         }, 500);
       }, 1000);
@@ -583,9 +594,19 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
         return this.isInGame;
       }
     }, {
+      key: 'showChallengeArea',
+      get: function get() {
+        return this.isInRound && !this.isWaitingForNextRound;
+      }
+    }, {
+      key: 'showChallengeWaitArea',
+      get: function get() {
+        return !this.isInRound && this.isWaitingForNextRound;
+      }
+    }, {
       key: 'currentScoreString',
       get: function get() {
-        return ('000' + this.currentScore).slice(-4);
+        return ('0000' + this.currentScore).slice(-5);
       }
     }, {
       key: 'canSubmitWord',
@@ -920,7 +941,7 @@ define('resources/elements/ui-wrappers/bs-row',['exports', 'aurelia-framework'],
 });
 define('text!app.html', ['module'], function(module) { module.exports = "<template><require from=\"jquery-ui-dist/jquery-ui.css\"></require><router-view></router-view></template>"; });
 define('text!styles/utility-styles.css', ['module'], function(module) { module.exports = ""; });
-define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: gold;\r\n}\r\n\r\n.loss-text {\r\n  color: #CD7F32;\r\n}\r\n\r\n#score-container {\r\n  height: 40px;\r\n}\r\n\r\n#score-wrapper {\r\n  color: gold;\r\n}\r\n\r\n.type-area {\r\n  height: 170px !important;\r\n}\r\n"; });
-define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><div class=\"container\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row if.bind=\"showLoadingBanner\"><h3 no-select><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row><h4 no-select id=\"score-container\" class=\"text-right ${!showCurrentScore ? 'hidden' : ''}\"><span id=\"score-wrapper\"><i class=\"fa fa-star\"></i> ${currentScoreString}</span></h4></bs-row><bs-row if.bind=\"showGameArea\"><div class=\"animated fadeIn pulse type-area\" if.bind=\"true\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"typedWord\"></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong id=\"victory-text-container\">${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template>"; });
+define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: gold;\r\n}\r\n\r\n.loss-text {\r\n  color: #CD7F32;\r\n}\r\n\r\n#score-container {\r\n  height: 50px;\r\n}\r\n\r\n#score-wrapper {\r\n  color: gold;\r\n  display: block;\r\n  width: 100px;\r\n  float: right;\r\n}\r\n\r\n.type-area {\r\n  height: 170px !important;\r\n}\r\n"; });
+define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><div class=\"container\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row if.bind=\"showLoadingBanner\"><h3 no-select><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row><h4 no-select id=\"score-container\" class=\"${!showCurrentScore ? 'hidden' : ''}\"><span id=\"score-wrapper\"><i class=\"fa fa-star\"></i> ${currentScoreString}</span></h4></bs-row><bs-row if.bind=\"showGameArea\"><div class=\"animated fadeIn pulse type-area\" if.bind=\"showChallengeArea\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"typedWord\"></div><div class=\"type-area\" if.bind=\"showChallengeWaitArea\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${challengeWaitText}</h3></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong id=\"victory-text-container\">${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template>"; });
 define('text!resources/elements/ui-wrappers/bs-row.html', ['module'], function(module) { module.exports = "<template><div class=\"row\"><div class=\"col-xs-${xs} col-sm-${sm} col-md-${md} col-lg-${lg}\"><slot></slot></div></div></template>"; });
 //# sourceMappingURL=app-bundle.js.map
