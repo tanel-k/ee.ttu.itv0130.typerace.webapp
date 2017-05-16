@@ -87,6 +87,7 @@ export class GameContainer {
     this.getMessageBanner = () => (this.element.querySelector('#message-banner'));
     this.getScoreWrapper = () => (this.element.querySelector('#score-wrapper'));
     this.getVictoryTextContainer = () => (this.element.querySelector('#victory-text-container'));
+    this.getWordInput = () => (this.element.querySelector('.word-input'));
   }
 
   attachDOMListeners() {}
@@ -223,6 +224,7 @@ export class GameContainer {
 
     playAudio(this.audioBank.wordMismatch);
     this.flashMessage('Try again!', 1000);
+    // this.getWordInput().focus();
   }
 
   handleRoundWon(data) {
@@ -383,10 +385,12 @@ export class GameContainer {
   }
 
   handleWordSubmit() {
-    if (this.canSubmitWord) {
-      this.sendWord();
-    } else {
-      this.handleWordMismatch();
+    if (!this.isWordInputDisabled) {
+      if (this.canSubmitWord) {
+        this.sendWord();
+      } else {
+        this.handleWordMismatch();
+      }
     }
   }
   /* /USER INTERACTION HANDLERS */
