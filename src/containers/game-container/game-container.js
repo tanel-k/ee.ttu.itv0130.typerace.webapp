@@ -63,6 +63,7 @@ export class GameContainer {
     this.isCheckingWord = false;
     this.hasJoinedGameAtLeastOnce = false;
 
+    this.hasJoinedGame = false;
     this.isInRound = true;
     this.showWinStatus = false;
     this.showMessageBanner = false;
@@ -176,28 +177,29 @@ export class GameContainer {
   }
 
   handleBroadcastWord(data) {
-    playAudio(this.audioBank.opponentFound);
+    if (this.hasJoinedGame) {
+      playAudio(this.audioBank.opponentFound);
+      this.hasJoinedGameAtLeastOnce = true;
+      this.isWaitingForOpponent = false;
+      this.isWaitingForNextRound = false;
+      this.isInRound = true;
+      this.currentWord = data.word;
+      this.currentOpponent = data.opponentNickname;
+      this.isInGame = true;
+      this.hasNotSentWord = true;
 
-    this.hasJoinedGameAtLeastOnce = true;
-    this.isWaitingForOpponent = false;
-    this.isWaitingForNextRound = false;
-    this.isInRound = true;
-    this.currentWord = data.word;
-    this.currentOpponent = data.opponentNickname;
-    this.isInGame = true;
-    this.hasNotSentWord = true;
+      this.dataAPI.getScoreRequest(this.sessionId, this.lastScoreIndex || '0')
+      .send()
+      .then((response) => {
+        const { roundScores } = response.content;
 
-    this.dataAPI.getScoreRequest(this.sessionId, this.lastScoreIndex || '0')
-    .send()
-    .then((response) => {
-      const { roundScores } = response.content;
-
-      roundScores.forEach((roundScore) => {
-        this.eventAggregator.publish(new eventTypes.NewScore(roundScore));
-        this.lastScoreIndex = roundScore.index;
-      });
-    })
-    .catch((err) => {});
+        roundScores.forEach((roundScore) => {
+          this.eventAggregator.publish(new eventTypes.NewScore(roundScore));
+          this.lastScoreIndex = roundScore.index;
+        });
+      })
+      .catch((err) => {});
+    }
   }
 
   handleTypeWordResponse(data) {
@@ -236,10 +238,12 @@ export class GameContainer {
   }
 
   handleTerminateGame(data) {
-    playAudio(this.audioBank.opponentLeft);
+    this.hasJoinedGame = false;
     this.isInGame = false;
     this.isInRound = false;
     this.currentOpponent = null;
+
+    playAudio(this.audioBank.opponentLeft);
     this.flashMessage('Your opponent left!', 2000);
     setTimeout(() => this.canJoinGame = true, 2000);
   }
@@ -406,6 +410,7 @@ export class GameContainer {
 
   joinGame() {
     this.loadingText = 'Waiting for an opponent...';
+    this.hasJoinedGame = true;
     this.isWaitingForOpponent = true;
     this.canDisplayTutorial = false;
     this.canJoinGame = false;
