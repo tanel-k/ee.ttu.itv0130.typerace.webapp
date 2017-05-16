@@ -2,12 +2,38 @@
   <!-- ADAPTED FROM: https://codepen.io/JFarrow/pen/fFrpg -->
   <require from="./history-sidebar.css"></require>
 
-  <div no-select class="history-container hidden-xs">
+  <div no-select class="history-container inactive hidden-xs animated fadeIn">
     <div class="history-heading">
-      <i class="fa-sidebar fa fa-clock-o"></i>
+      <i class="fa-sidebar fa fa-history"></i>
       <h5 class="history-text">
         History
       </h5>
     </div>
+<!--
+    <div class="history-lines-container">
+      <div class="history-line">
+        <span class="history-text">Wins: 30 Losses: 30</span>
+      </div>
+    </div>
+-->
+    <table class="table table-hover history-table">
+      <thead>
+        <th class="col-xs-4 col-sm-4 col-md-4">Word</th>
+        <th class="col-xs-4 col-sm-4 col-md-4">Your time</th>
+        <th class="col-xs-4 col-sm-4 col-md-4">Opponent's time</th>
+      </thead>
+      <tbody>
+        <tr>
+          <td>soliloquy</td>
+          <td>45s</td>
+          <td>1m 30s</td>
+        </tr>
+        <tr>
+          <td>soliloquy</td>
+          <td>45s</td>
+          <td>1m 30s</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
