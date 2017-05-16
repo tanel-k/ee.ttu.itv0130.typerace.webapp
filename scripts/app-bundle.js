@@ -254,7 +254,8 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
         winnerPointDing: new Audio('media/audio/winner-point-ding.ogg'),
         wordMismatch: new Audio('media/audio/word-mismatch.ogg'),
         joinGame: new Audio('media/audio/join-game.ogg'),
-        opponentFound: new Audio('media/audio/opponent-found.ogg')
+        opponentFound: new Audio('media/audio/opponent-found.ogg'),
+        opponentLeft: new Audio('media/audio/opponent-left.ogg')
       };
 
       this.initStateModel();
@@ -274,6 +275,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.isWaitingForOpponent = false;
       this.isWaitingForNextRound = false;
       this.isCheckingWord = false;
+      this.hasJoinedGameAtLeastOnce = false;
 
       this.isInRound = true;
       this.showWinStatus = false;
@@ -281,6 +283,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       this.canJoinGame = false;
       this.canDisplayTutorial = false;
 
+      this.currentOpponent = null;
       this.sessionId = null;
       this.didWin = null;
       this.isNicknameSet = false;
@@ -368,6 +371,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     GameContainer.prototype.handleBroadcastWord = function handleBroadcastWord(data) {
       playAudio(this.audioBank.opponentFound);
 
+      this.hasJoinedGameAtLeastOnce = true;
       this.isWaitingForOpponent = false;
       this.isWaitingForNextRound = false;
       this.isInRound = true;
@@ -395,24 +399,12 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     };
 
     GameContainer.prototype.handleWordMismatch = function handleWordMismatch() {
-      var _this3 = this;
-
       if (this.messageBannerHideTimeout) {
         clearTimeout(this.messageBannerHideTimeout);
       }
 
       playAudio(this.audioBank.wordMismatch);
-      this.showMessageBanner = true;
-      this.currentMessage = 'Try again!';
-
-      var messageBanner = this.getMessageBanner();
-      messageBanner.classList.remove('fadeOut');
-      this.messageBannerHideTimeout = setTimeout(function () {
-        messageBanner.classList.add('fadeOut');
-        _this3.messageBannerHideTimeout = setTimeout(function () {
-          _this3.showMessageBanner = false;
-        }, 500);
-      }, 500);
+      this.flashMessage('Try again!', 1000);
     };
 
     GameContainer.prototype.handleRoundWon = function handleRoundWon(data) {
@@ -421,6 +413,19 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
 
     GameContainer.prototype.handleRoundLost = function handleRoundLost(data) {
       this.handleRoundEnd(data, false);
+    };
+
+    GameContainer.prototype.handleTerminateGame = function handleTerminateGame(data) {
+      var _this3 = this;
+
+      playAudio(this.audioBank.opponentLeft);
+      this.isInGame = false;
+      this.isInRound = false;
+      this.currentOpponent = null;
+      this.flashMessage('Your opponent left!', 2000);
+      setTimeout(function () {
+        return _this3.canJoinGame = true;
+      }, 2000);
     };
 
     GameContainer.prototype.handleRoundEnd = function handleRoundEnd(data, victory) {
@@ -465,29 +470,41 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       var $scoreWrapper = $(scoreWrapper);
       var $victoryTextContainer = $(victoryTextContainer);
 
-      var startTop = $victoryTextContainer.offset().top + 20;
-      var startLeft = $victoryTextContainer.offset().left + 85;
+      var startTopOffset = $victoryTextContainer.offset().top + 20;
+      var startLeftOffset = $victoryTextContainer.offset().left + 85;
+      var endTopOffset = $scoreWrapper.offset().top;
+      var endLeftOffset = $scoreWrapper.offset().left;
       var starIcon = document.createElement('i');
+      var pointsDiv = document.createElement('div');
+
+      var pointsDivCss = {
+        color: 'green',
+        'font-weight': 'bold',
+        'font-size': '13px'
+      };
+      pointsDiv.css = pointsDivCss;
+
       starIcon.classList.add('fa');
       starIcon.classList.add('fa-star');
-      var css = {
-        'font-size': '24px'
+      var starIconCss = {
+        'font-size': '24px',
+        position: 'absolute'
       };
-      starIcon.style = css;
+      starIcon.style = starIconCss;
 
       var moveStar = function moveStar(color, amount) {
         var $starIcon = $(starIcon.cloneNode());
         $starIcon.offset({
-          top: startTop,
-          left: startLeft
+          top: startTopOffset,
+          left: startLeftOffset
         }).css(Object.assign({
           opacity: '0.5',
           color: color,
           position: 'absolute',
           'z-index': '100'
-        }, css)).appendTo($('body')).animate({
-          'top': $scoreWrapper.offset().top,
-          'left': $scoreWrapper.offset().left
+        }, starIconCss)).appendTo($('body')).animate({
+          'top': endTopOffset,
+          'left': endLeftOffset
         }, 500, 'easeInOutExpo', function () {
           if (victory) {
             playAudio(_this5.audioBank.winnerPointDing);
@@ -495,9 +512,22 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
             playAudio(_this5.audioBank.loserPointDing);
           }
 
-          $scoreWrapper.effect('shake', { times: victory ? 2 : 1 }, 100);
+          $scoreWrapper.effect('bounce', { times: victory ? 2 : 1 }, 100);
           $starIcon.remove();
           _this5.currentScore += amount;
+          var $pointsDiv = $(pointsDiv.cloneNode());
+          $pointsDiv.text('+' + amount).css(Object.assign({
+            opacity: '0.5',
+            color: color,
+            position: 'absolute',
+            'z-index': '100'
+          }, pointsDivCss)).offset({
+            top: endTopOffset,
+            left: endLeftOffset
+          }).appendTo($('body')).addClass('animated fadeOutUp');
+          setTimeout(function () {
+            return $pointsDiv.remove();
+          }, 500);
         });
       };
 
@@ -522,11 +552,11 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       }
     };
 
-    GameContainer.prototype.handleTerminateGame = function handleTerminateGame(data) {};
-
     GameContainer.prototype.handleSetNicknameClick = function handleSetNicknameClick() {
-      playAudio(this.audioBank.closeItem);
-      this.setNickname();
+      if (this.currentNickname) {
+        playAudio(this.audioBank.closeItem);
+        this.setNickname();
+      }
     };
 
     GameContainer.prototype.handleJoinGameClick = function handleJoinGameClick() {
@@ -569,6 +599,24 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
       sendMessage(this.serverSocket, message);
     };
 
+    GameContainer.prototype.flashMessage = function flashMessage(message) {
+      var _this6 = this;
+
+      var durationMillis = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1000;
+
+      this.showMessageBanner = true;
+      this.currentMessage = message;
+
+      var messageBanner = this.getMessageBanner();
+      messageBanner.classList.remove('fadeOut');
+      this.messageBannerHideTimeout = setTimeout(function () {
+        messageBanner.classList.add('fadeOut');
+        _this6.messageBannerHideTimeout = setTimeout(function () {
+          _this6.showMessageBanner = false;
+        }, parseInt(durationMillis * 0.5, 10));
+      }, parseInt(durationMillis * 0.5, 10));
+    };
+
     _createClass(GameContainer, [{
       key: 'showLoadingBanner',
       get: function get() {
@@ -602,7 +650,7 @@ define('containers/game-container/game-container',['exports', 'aurelia-framework
     }, {
       key: 'showCurrentScore',
       get: function get() {
-        return this.isInGame;
+        return this.isInGame || this.hasJoinedGameAtLeastOnce;
       }
     }, {
       key: 'showChallengeArea',
@@ -951,8 +999,8 @@ define('resources/elements/ui-wrappers/bs-row',['exports', 'aurelia-framework'],
   })), _class2)) || _class;
 });
 define('text!app.html', ['module'], function(module) { module.exports = "<template><require from=\"jquery-ui-dist/jquery-ui.css\"></require><router-view></router-view></template>"; });
-define('text!styles/utility-styles.css', ['module'], function(module) { module.exports = ""; });
-define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: gold;\r\n}\r\n\r\n.loss-text {\r\n  color: #CD7F32;\r\n}\r\n\r\n#score-container {\r\n  height: 50px;\r\n}\r\n\r\n#message-text-container {\r\n  color: #7D658D;\r\n}\r\n\r\n#score-wrapper {\r\n  color: gold;\r\n  display: block;\r\n  width: 100px;\r\n  float: right;\r\n}\r\n\r\n.type-area {\r\n  height: 170px !important;\r\n}\r\n"; });
-define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><div class=\"container\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row if.bind=\"showLoadingBanner\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button take-focus class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row><h4 no-select id=\"score-container\" class=\"${!showCurrentScore ? 'hidden' : ''}\"><span id=\"score-wrapper\"><i class=\"fa fa-star\"></i> ${currentScoreString}</span></h4></bs-row><bs-row if.bind=\"showGameArea\"><div class=\"animated fadeIn pulse type-area\" if.bind=\"showChallengeArea\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"typedWord\"></div><div class=\"type-area\" if.bind=\"showChallengeWaitArea\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${challengeWaitText}</h3></div></bs-row><bs-row><div id=\"message-banner\" no-select class=\"animated fadeIn ${!showMessageBanner ? 'hidden' : ''}\"><h2 class=\"text-center\"><strong id=\"message-text-container\">${currentMessage}</strong></h2></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"message-banner animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong id=\"victory-text-container\">${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template>"; });
+define('text!styles/utility-styles.css', ['module'], function(module) { module.exports = "/* lg */\r\n@media (min-width: 1200px) {\r\n   .hidden-lg {\r\n     visibility: hidden;\r\n   }\r\n}\r\n\r\n/* md */\r\n@media (min-width: 992px) and (max-width: 1199px) {\r\n   .hidden-md {\r\n     visibility: hidden;\r\n   }\r\n}\r\n\r\n/* sm */\r\n@media (min-width: 768px) and (max-width: 991px) {\r\n   .hidden-sm {\r\n     visibility: hidden;\r\n   }\r\n}\r\n\r\n/* xs */\r\n@media (max-width: 767px) {\r\n   .hidden-xs {\r\n     visibility: hidden;\r\n   }\r\n}"; });
+define('text!containers/game-container/game-container.html', ['module'], function(module) { module.exports = "<template><require from=\"./game-container.css\"></require><require from=\"../../styles/utility-styles.css\"></require><div class=\"history-section hidden-md hidden-sm hidden-xs\"><bs-row><h4>History</h4></bs-row></div><div class=\"container\"><div class=\"page-header\" no-select><bs-row lg=\"8\" md=\"7\" sm=\"6\"><h1><img style=\"width:50px;height:50px\" src=\"icon.png\"> Typerace</h1></bs-row></div><bs-row><h4></h4><h4 no-select id=\"score-container\" class=\"${!showCurrentScore ? 'hidden' : ''}\"><span id=\"opponent-wrapper\" if.bind=\"currentOpponent\"><i class=\"fa fa-user\"></i> Opponent: <em>${currentOpponent}</em> </span><span id=\"score-wrapper\"><i class=\"fa fa-star\"></i> ${currentScoreString}</span></h4></bs-row><bs-row if.bind=\"showLoadingBanner\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${loadingText}</h3></bs-row><bs-row if.bind=\"showNicknameForm\"><div class=\"form-group\"><h6>Provide a nickname<input take-focus key-return.call=\"handleSetNicknameClick()\" class=\"form-control\" type=\"text\" value.bind=\"currentNickname\" placeholder=\"\"></h6></div><button click.trigger=\"handleSetNicknameClick()\" disabled.bind=\"!canSetNickname\" class=\"btn btn-primary btn-block\">Begin</button></bs-row><bs-row if.bind=\"showTutorial\"><p>TODO!</p></bs-row><bs-row if.bind=\"showJoinGameForm\"><button take-focus class=\"btn btn-success btn-block\" click.trigger=\"handleJoinGameClick()\">${showTutorial ? 'Got it!' : 'Join game'}</button></bs-row><bs-row if.bind=\"showGameArea\"><div class=\"animated fadeIn pulse type-area\" if.bind=\"showChallengeArea\"><div no-select><h2 class=\"text-center\"><small>Challenge:</small></h2><h2 class=\"text-center\"><em>${currentWord}</em></h2></div><input take-focus type=\"text\" key-return.call=\"handleWordSubmit()\" class=\"form-control\" disabled.bind=\"isWordInputDisabled\" value.bind=\"typedWord\"></div><div class=\"type-area\" if.bind=\"showChallengeWaitArea\"><h3 no-select class=\"text-center\"><i class=\"fa fa-circle-o-notch fa-spin\"></i> ${challengeWaitText}</h3></div></bs-row><bs-row><div id=\"message-banner\" no-select class=\"animated fadeIn ${!showMessageBanner ? 'hidden' : ''}\"><h2 class=\"text-center\"><strong id=\"message-text-container\">${currentMessage}</strong></h2></div></bs-row><bs-row><div id=\"victory-banner\" no-select class=\"message-banner animated fadeIn ${!showWinStatus ? 'hidden' : ''}\"><h2 class=\"text-center ${didWin ? 'victory-text' : 'loss-text'}\"><strong id=\"victory-text-container\">${didWin ? 'You won!' : 'You lost!'}</strong></h2></div></bs-row></div></template>"; });
+define('text!containers/game-container/game-container.css', ['module'], function(module) { module.exports = ".victory-text {\r\n  color: gold;\r\n}\r\n\r\n.loss-text {\r\n  color: #CD7F32;\r\n}\r\n\r\n#score-container {\r\n  height: 50px;\r\n}\r\n\r\n#message-text-container {\r\n  color: #7D658D;\r\n}\r\n\r\n#score-wrapper {\r\n  color: gold;\r\n  display: block;\r\n  width: 100px;\r\n  float: right;\r\n}\r\n\r\n#opponent-wrapper {\r\n  color: black;\r\n  width: 400px;\r\n  float: left;\r\n  display: block;\r\n  text-overflow: ellipsis;\r\n  overflow: hidden;\r\n  white-space: nowrap;\r\n}\r\n\r\n.type-area {\r\n  height: 170px !important;\r\n}\r\n\r\n.history-section {\r\n  position: absolute;\r\n  left: 50px;\r\n  top: 60px;\r\n}"; });
 define('text!resources/elements/ui-wrappers/bs-row.html', ['module'], function(module) { module.exports = "<template><div class=\"row\"><div class=\"col-xs-${xs} col-sm-${sm} col-md-${md} col-lg-${lg}\"><slot></slot></div></div></template>"; });
 //# sourceMappingURL=app-bundle.js.map

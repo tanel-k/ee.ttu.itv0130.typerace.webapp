@@ -2,17 +2,38 @@
   <require from="./game-container.css"></require>
   <require from="../../styles/utility-styles.css"></require>
 
+  <div class="history-section hidden-md hidden-sm hidden-xs">
+    <bs-row>
+      <h4>History</h4>
+
+    </bs-row>
+  </div>
+
   <div class="container">
     <div class="page-header" no-select>
       <bs-row lg="8" md="7" sm="6">
         <h1><img style="width:50px;height:50px" src="icon.png"> Typerace</h1>
       </bs-row>
     </div>
-  
+
+    <bs-row>
+      <h4>
+
+      </h4>
+      <h4 no-select id="score-container" class="${!showCurrentScore ? 'hidden' : ''}">
+        <span id="opponent-wrapper" if.bind="currentOpponent">
+          <i class="fa fa-user"></i> Opponent: <em>${currentOpponent}</em>
+        </span>
+        <span id="score-wrapper">
+          <i class="fa fa-star"></i> ${currentScoreString}
+        </span>
+      </h4>
+    </bs-row>
+
     <bs-row if.bind="showLoadingBanner">
       <h3 no-select class="text-center"><i class="fa fa-circle-o-notch fa-spin"></i> ${loadingText}</h3>
     </bs-row>
-  
+
     <bs-row if.bind="showNicknameForm">
       <div class="form-group">
         <h6>Provide a nickname</h5>
@@ -39,14 +60,6 @@
         take-focus
         class="btn btn-success btn-block"
         click.trigger="handleJoinGameClick()">${showTutorial ? 'Got it!' : 'Join game'}</button>
-    </bs-row>
-
-    <bs-row>
-      <h4 no-select id="score-container" class="${!showCurrentScore ? 'hidden' : ''}">
-        <span id="score-wrapper">
-          <i class="fa fa-star"></i> ${currentScoreString}
-      </span>
-      </h4>
     </bs-row>
 
     <bs-row if.bind="showGameArea">

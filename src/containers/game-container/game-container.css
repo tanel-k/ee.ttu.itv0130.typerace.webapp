@@ -21,6 +21,22 @@
   float: right;
 }
 
+#opponent-wrapper {
+  color: black;
+  width: 400px;
+  float: left;
+  display: block;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .type-area {
   height: 170px !important;
+}
+
+.history-section {
+  position: absolute;
+  left: 50px;
+  top: 60px;
 }

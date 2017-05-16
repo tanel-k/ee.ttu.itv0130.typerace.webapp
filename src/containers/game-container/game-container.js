@@ -29,7 +29,8 @@ export class GameContainer {
       winnerPointDing: new Audio('media/audio/winner-point-ding.ogg'),
       wordMismatch: new Audio('media/audio/word-mismatch.ogg'),
       joinGame: new Audio('media/audio/join-game.ogg'),
-      opponentFound: new Audio('media/audio/opponent-found.ogg')
+      opponentFound: new Audio('media/audio/opponent-found.ogg'),
+      opponentLeft: new Audio('media/audio/opponent-left.ogg')
     };
 
     this.initStateModel();
@@ -50,6 +51,7 @@ export class GameContainer {
     this.isWaitingForOpponent = false;
     this.isWaitingForNextRound = false;
     this.isCheckingWord = false;
+    this.hasJoinedGameAtLeastOnce = false;
 
     this.isInRound = true;
     this.showWinStatus = false;
@@ -57,6 +59,7 @@ export class GameContainer {
     this.canJoinGame = false;
     this.canDisplayTutorial = false;
 
+    this.currentOpponent = null;
     this.sessionId = null;
     this.didWin = null;
     this.isNicknameSet = false;
@@ -140,6 +143,7 @@ export class GameContainer {
   handleBroadcastWord(data) {
     playAudio(this.audioBank.opponentFound);
 
+    this.hasJoinedGameAtLeastOnce = true;
     this.isWaitingForOpponent = false;
     this.isWaitingForNextRound = false;
     this.isInRound = true;
@@ -172,17 +176,7 @@ export class GameContainer {
     }
 
     playAudio(this.audioBank.wordMismatch);
-    this.showMessageBanner = true;
-    this.currentMessage = 'Try again!';
-
-    const messageBanner = this.getMessageBanner();
-    messageBanner.classList.remove('fadeOut');
-    this.messageBannerHideTimeout = setTimeout(() => {
-      messageBanner.classList.add('fadeOut');
-      this.messageBannerHideTimeout = setTimeout(() => {
-        this.showMessageBanner = false;
-      }, 500);
-    }, 500);
+    this.flashMessage('Try again!', 1000);
   }
 
   handleRoundWon(data) {
@@ -191,6 +185,15 @@ export class GameContainer {
 
   handleRoundLost(data) {
     this.handleRoundEnd(data, false);
+  }
+
+  handleTerminateGame(data) {
+    playAudio(this.audioBank.opponentLeft);
+    this.isInGame = false;
+    this.isInRound = false;
+    this.currentOpponent = null;
+    this.flashMessage('Your opponent left!', 2000);
+    setTimeout(() => this.canJoinGame = true, 2000);
   }
 
   handleRoundEnd(data, victory) {
@@ -231,33 +234,45 @@ export class GameContainer {
     const $scoreWrapper = $(scoreWrapper);
     const $victoryTextContainer = $(victoryTextContainer);
 
-    const startTop = $victoryTextContainer.offset().top + 20;
-    const startLeft = $victoryTextContainer.offset().left + 85;
+    const startTopOffset = $victoryTextContainer.offset().top + 20;
+    const startLeftOffset = $victoryTextContainer.offset().left + 85;
+    const endTopOffset = $scoreWrapper.offset().top;
+    const endLeftOffset = $scoreWrapper.offset().left;
     const starIcon = document.createElement('i');
+    const pointsDiv = document.createElement('div');
+
+    const pointsDivCss = {
+      color: 'green',
+      'font-weight': 'bold',
+      'font-size': '13px'
+    };
+    pointsDiv.css = pointsDivCss;
+
     starIcon.classList.add('fa');
     starIcon.classList.add('fa-star');
-    const css =  {
-      'font-size': '24px'
+    const starIconCss =  {
+      'font-size': '24px',
+      position: 'absolute'
     };
-    starIcon.style = css;
+    starIcon.style = starIconCss;
 
     const moveStar = (color, amount) => {
       const $starIcon = $(starIcon.cloneNode());
       $starIcon
         .offset({
-          top: startTop,
-          left: startLeft
+          top: startTopOffset,
+          left: startLeftOffset
         })
         .css(Object.assign({
           opacity: '0.5',
           color,
           position: 'absolute',
           'z-index': '100'
-        }, css))
+        }, starIconCss))
         .appendTo($('body'))
         .animate({
-          'top': $scoreWrapper.offset().top,
-          'left': $scoreWrapper.offset().left
+          'top': endTopOffset,
+          'left': endLeftOffset
         }, 500, 'easeInOutExpo', () => {
           if (victory) {
             playAudio(this.audioBank.winnerPointDing);
@@ -265,9 +280,25 @@ export class GameContainer {
             playAudio(this.audioBank.loserPointDing);
           }
 
-          $scoreWrapper.effect('shake', { times: victory ? 2 : 1 }, 100);
+          $scoreWrapper.effect('bounce', { times: victory ? 2 : 1 }, 100);
           $starIcon.remove();
           this.currentScore += amount;
+          const $pointsDiv = $(pointsDiv.cloneNode());
+          $pointsDiv
+            .text(`+${amount}`)
+            .css(Object.assign({
+              opacity: '0.5',
+              color,
+              position: 'absolute',
+              'z-index': '100'
+            }, pointsDivCss))
+            .offset({
+              top: endTopOffset,
+              left: endLeftOffset
+            })
+            .appendTo($('body'))
+            .addClass('animated fadeOutUp');
+          setTimeout(() => $pointsDiv.remove(), 500);
         });
     };
 
@@ -293,13 +324,11 @@ export class GameContainer {
   /* /SERVER MESSAGE HANDLERS */
 
   /* USER INTERACTION HANDLERS */
-  handleTerminateGame(data) {
-    // TODO
-  }
-
   handleSetNicknameClick() {
-    playAudio(this.audioBank.closeItem);
-    this.setNickname();
+    if (this.currentNickname) {
+      playAudio(this.audioBank.closeItem);
+      this.setNickname();
+    }
   }
 
   handleJoinGameClick() {
@@ -367,7 +396,7 @@ export class GameContainer {
   }
 
   get showCurrentScore() {
-    return this.isInGame;
+    return this.isInGame || this.hasJoinedGameAtLeastOnce;
   }
 
   get showChallengeArea() {
@@ -398,6 +427,20 @@ export class GameContainer {
   /* SHARED UTILS */
   sendToServer(message) {
     sendMessage(this.serverSocket, message);
+  }
+
+  flashMessage(message, durationMillis = 1000) {
+    this.showMessageBanner = true;
+    this.currentMessage = message;
+
+    const messageBanner = this.getMessageBanner();
+    messageBanner.classList.remove('fadeOut');
+    this.messageBannerHideTimeout = setTimeout(() => {
+      messageBanner.classList.add('fadeOut');
+      this.messageBannerHideTimeout = setTimeout(() => {
+        this.showMessageBanner = false;
+      }, parseInt(durationMillis * 0.5, 10));
+    }, parseInt(durationMillis * 0.5, 10));
   }
   /* /SHARED UTILS */
 }
